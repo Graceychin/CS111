@@ -1,8 +1,6 @@
-Lab1a_CS111_Winter 2013
+Lab1b_CS111_Winter 2013
 
 Members: Justin Wei(003942248), Samping Chuang(603945890)
 
 Limitations:
-We think we treated the token ';' correctly by treating it as a new line token but also checking
-whether there exists some command before the ';'. If there isn't any command before the ';', this 
-is a incorrect syntax.
+Not sure exactly how to treat exit status of the pipe command. According to the regular shell the pipe command's exit status is still good if the second commandworks, but the first does not. We are not sure whether or not pipe exit status should be good or not depending on the pipe's commands. For now we left the pipe exit status as good regardless of the two commands. 
