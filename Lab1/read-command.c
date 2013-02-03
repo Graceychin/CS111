@@ -71,6 +71,7 @@ command_stream_t init_command_stream(){
 command_t create_init_command(enum command_type type){
   command_t cmd = (command_t)checked_malloc(sizeof(struct command));
   cmd->type = type;
+  cmd->status = -1;
   cmd->input = NULL;
   cmd->output = NULL;
   return cmd;
