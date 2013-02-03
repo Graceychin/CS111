@@ -1,0 +1,8 @@
+Lab1a_CS111_Winter 2013
+
+Members: Justin Wei(003942248), Samping Chuang(603945890)
+
+Limitations:
+We think we treated the token ';' correctly by treating it as a new line token but also checking
+whether there exists some command before the ';'. If there isn't any command before the ';', this 
+is a incorrect syntax.

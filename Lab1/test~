@@ -1,0 +1,5 @@
+
+
+ls | grep .c | grep p
+
+echo ok
