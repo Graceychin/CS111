@@ -39,46 +39,21 @@ cc_node_t* get_pipe_list(command_t c, int num_pipes){
   }
   
   i=0;
-  int j;
   while(c->type != SIMPLE_COMMAND){
-    //printf("new command: %s %s\n",c->u.command[1]->u.word[0], c->u.command[1]->u.word[1]);
     r[i]->c = c->u.command[1];
-    j=0;
-    /*printf("round %d \n",i);
-    for(; j <=i; j++){
-      printf("TEST%d: %s %s\n", j,r[j]->c->u.word[0], r[j]->c->u.word[1]);
-    }*/
     c = c->u.command[0];
-    
     i++;
   }
   //get left child 
   r[i]->c = c;
-  /*printf("round %d \n",i);
-   j=0;
-   for(; j <=i; j++){
-    printf("TEST%d: %s %s\n", j,r[j]->c->u.word[0], r[j]->c->u.word[1]);
-  }*/
-  
-
-  
   
   //set pointer traversal
   for(; i>0; i--){
     r[i]->next = r[i-1];  
-    //printf("MIDDLE:  %s %s\n", r[i]->c->u.word[0], r[i]->c->u.word[1]);
   }
- 
-  
+
   r[i]->next = NULL;
   
-  cc_node_t temp = r[num_pipes];
-  while(temp){
-  
-    //printf("AFTER %s %s \n", temp->c->u.word[0], temp->c->u.word[1]);
-    temp=temp->next;
-  }
-  //printf("test: %d\n", i);
   return r;
 
 }
@@ -108,7 +83,7 @@ void execute(command_t c)
       int c_status;
       waitpid(cpid, &c_status, 0);
       c->status = c_status;
-      printf("status:%d\n", c_status);
+      //printf("status:%d\n", c_status);
       return;
     }
   }else{
@@ -124,27 +99,18 @@ void execute_pipe(command_t c)
   while(temp->type == PIPE_COMMAND){
     n_pipes++;
     temp = temp->u.command[0];
-  }
-
-  //declare the amount of pipe file descriptors we need (multiples of 2)
-  //int* pipe_fd = (int*) checked_malloc(sizeof(int) * 2 * n_pipes);
-  int pipe_fd[2];
-  int i;
-  /*for(i=0; i< n_pipes; i++){
-    if(pipe(pipe_fd+i*2) < 0){
-      error(1, 0, "error piping command");
-    }
-  }*/
+  } 
 
   //get a linked list of commands for piping
   cc_node_t* temp_list = get_pipe_list(c, n_pipes);
   cc_node_t pipe_c = temp_list[n_pipes];
   
-        
   //0,1: read/write for 1st pipe, 2,3: read/write for 2nd pipe, and so on
   //start piping
   pid_t cpid;
   int count =0;
+  int i;
+  int pipe_fd[2];
   int new_fd[2];
 
   while(pipe_c){
@@ -189,7 +155,6 @@ void execute_pipe(command_t c)
       
       if(execvp(cmd->u.word[0], cmd->u.word) < 0){
         error(1, 0, "error executing command");    
-      
       }
       
       fclose(stdout);
@@ -205,18 +170,21 @@ void execute_pipe(command_t c)
         pipe_fd[0] = new_fd[0];
         pipe_fd[1] = new_fd[1];
       }
-      
-    
     }else{
        error(1, 0, "Forking process failed during piping");   
     }
-    
-  
     count++;
     pipe_c = pipe_c->next;
   
   }
-
+  if(count>1){
+    close(pipe_fd[0]);
+    close(pipe_fd[1]);
+    int status;
+    waitpid(cpid, &status, 0);
+    c->status = status;
+  }
+  //fclose(stdin);
   //free memory
   free_pipe_list(temp_list);
   return;
@@ -233,7 +201,9 @@ int execute_command_type(command_t c)
       }else{
         c->status = execute_command_type(c->u.command[1]);
       }
-      printf("AND:%d\n", c->status);
+      if(DEBUG){
+        printf("AND:%d\n", c->status);
+      } 
       break;
 
     case OR_COMMAND:
@@ -243,7 +213,9 @@ int execute_command_type(command_t c)
       }else{
         c->status = execute_command_type(c->u.command[1]);
       }
-      printf("OR:%d\n", c->status);
+      if(DEBUG){
+        printf("OR:%d\n", c->status);
+      }
       break;
 
     case PIPE_COMMAND:

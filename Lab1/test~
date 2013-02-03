@@ -1,5 +1,6 @@
 
 
-ls | grep .c | grep p
-
-echo ok
+echo a && ls | grep .c && echo sampingchuang | grep p  | grep d
+echo b
+echo e
+echo d
