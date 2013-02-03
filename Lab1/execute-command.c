@@ -221,7 +221,6 @@ int execute_command_type(command_t c)
     case PIPE_COMMAND:
       
       execute_pipe(c);
-      c->status = 0;
       break;
 
     case SUBSHELL_COMMAND:

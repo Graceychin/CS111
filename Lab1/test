@@ -1,6 +1,7 @@
+echo hi || rm abcdefg && echo dont print me
+cat abcdefg || rm abcdefg && echo dont print me
+cat abcdefg ||  echo print me
 
+(echo abcdefghijk | rev |rev |rev |rev > temp) && cat temp && rm temp
 
-echo a && ls | grep .c && echo sampingchuang | grep a
-echo b
-echo e
-echo d
+#cat < /etc/passwd | tr a-z A-Z | sort -u > out || echo sort failed!
