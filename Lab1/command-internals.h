@@ -9,6 +9,19 @@ enum command_type
     SIMPLE_COMMAND,      // a simple command
     SUBSHELL_COMMAND,    // ( A )
   };
+  
+struct depend
+{
+  int input;
+  int output;
+};
+
+//Dependency list, 1 is read, 2 is write, 0 is no conflict
+struct depend **depend_list;
+int total_cmd;
+char **file_list;
+int total_file;
+
 
 // Data associated with a command.
 struct command
@@ -37,7 +50,7 @@ struct command
 
 struct cc_node
 {
-  command_t c;
+  struct command* c;
   struct cc_node* next;
 };
 
