@@ -1,8 +1,4 @@
-echo a b > f  && sleep 1
-#echo hi || rm abcdefg && echo dont print me
-#cat abcdefg || rm abcdefg && echo dont print me
-#cat abcdefg ||  echo print me
+echo a d b > b && sleep 1
+echo a d c > b && sleep 1
+echo f > f && sleep 1
 
-#(echo abcdefghijk | rev |rev |rev |rev > temp) && cat temp && rm temp
-
-#cat < /etc/passwd | tr a-z A-Z | sort -u > out || echo sort failed!

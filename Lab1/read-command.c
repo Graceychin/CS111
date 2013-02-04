@@ -140,17 +140,18 @@ char* read_next_token(char *s, int *p, const int size){
   //if there is no word then return null
   if(word_size == 0)
     return NULL;
-
-  char *word = (char *) malloc(sizeof(char) * word_size);
+  char *word = (char *) malloc(sizeof(char) * (word_size+1));
   int i = 0;
   for(; i< word_size; i++){
     word[i] = s[e+i]; 
   }
+  word[word_size] = '\0';
 
   //printf("word: %s, size: %d\n", word, word_size);
   if(s[*p] == '\n' || isSpecial(s[*p]) || s[*p] == '<' || s[*p] == '>' || s[*p] == '#'){
     (*p)--;
   }
+
   return word;
 }
 
@@ -264,7 +265,7 @@ command_t create_simple_command(char *s, int *p, const int size){
       skip_comment(s, p, size);
     }
   }
- 
+
   //NOTE: something could be wrong here
   //TESTING
   if(DEBUG){
@@ -277,8 +278,9 @@ command_t create_simple_command(char *s, int *p, const int size){
   }
       /////////////////////////////    
  
+      
       int i;
-      for(i=1; i<words_count; i++){
+      for(i=1; i<words_count; i++){       
         int file_num = file_index(file_list, cmd->u.word[i]);
         if(file_num != -1){
           depend_list[total_cmd][file_num].input += 1;
@@ -295,10 +297,11 @@ command_t create_simple_command(char *s, int *p, const int size){
           depend_list[total_cmd][total_file-1].input += 1;
         }
       }
+      
+      
 
   //subtract one to match the next space (or special) character
   (*p)-=2;
- 
   //printf("p value: %d, [%c][%c]\n",*p, s[*p],s[*p +1]);
   return cmd;
 }
@@ -393,7 +396,6 @@ command_t create_general_command(char *s, int *p, const int size, bool sub_shell
       exit(1);
     
     }else if(c =='\n' && (*p) != size-1){
-      //printf("WE HIT A NEW LINE!\n");
       line_num++;
       if(left_command){
         break;
@@ -401,8 +403,9 @@ command_t create_general_command(char *s, int *p, const int size, bool sub_shell
       }else{
         continue;
       }     
+      
     }else if(c == ';'){
-    
+    printf(";!\n");
       //A semicolon has to come after some command
       if(!left_command){
         fprintf(stderr,"%d: There has to be some commands before the token ';'.\n", line_num);
@@ -468,6 +471,7 @@ command_t create_general_command(char *s, int *p, const int size, bool sub_shell
       exit(1);
  
   }
+  
   return left_command;
 }
 
@@ -500,11 +504,12 @@ make_command_stream (int (*get_next_byte) (void *),
   for(p = 0; p < size; p++){
     //printf("Parsing commands..\n");
     command_t cmd = create_general_command(buffer, &p, size, false);
+    
     if(cmd){
       total_cmd++;
       //reallocating dependency list and initializing values
       depend_list = (struct depend**) realloc(depend_list, sizeof(struct depend*) * (total_cmd+1));
-      depend_list[total_cmd] = (struct depend*) realloc(depend_list[total_cmd], sizeof(struct depend) * total_file);
+      depend_list[total_cmd] = (struct depend*) checked_malloc(sizeof(struct depend) * total_file);
       int i;
       for(i=0; i<total_file; i++){
         depend_list[total_cmd][i].input = 0;
