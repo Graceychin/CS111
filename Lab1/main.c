@@ -110,7 +110,7 @@ main (int argc, char **argv)
       int c_count = 0;
       while(temp_cmd){
         pid_t cpid;
-        
+          
         //fork and execute commands with no dependency problem and that the command hasn't been run
         if(cpid_list[c_count] ==0 && no_dependency(temp_cmd)){
            cpid = fork();
