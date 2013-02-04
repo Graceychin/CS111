@@ -1,7 +1,12 @@
-echo hi || rm abcdefg && echo dont print me
-cat abcdefg || rm abcdefg && echo dont print me
-cat abcdefg ||  echo print me
+echo a > c && sleep 1
+echo a > c && sleep 1
+echo a > d && sleep 1
 
-(echo abcdefghijk | rev |rev |rev |rev > temp) && cat temp && rm temp
+
+#echo hi || rm abcdefg && echo dont print me
+#cat abcdefg || rm abcdefg && echo dont print me
+#cat abcdefg ||  echo print me
+
+#(echo abcdefghijk | rev |rev |rev |rev > temp) && cat temp && rm temp
 
 #cat < /etc/passwd | tr a-z A-Z | sort -u > out || echo sort failed!

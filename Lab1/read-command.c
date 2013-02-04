@@ -527,5 +527,3 @@ cc_node_t
 get_root(command_stream_t s){
   return s->root;  
 }
-
-}

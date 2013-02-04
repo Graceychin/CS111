@@ -7,10 +7,10 @@
 #include <error.h>
 #include <getopt.h>
 #include <stdio.h>
-#include <stdlib.h> //
-#include <sys/wait.h>//
-#include <sys/types.h>//
-#include <unistd.h>//
+#include <stdlib.h> 
+#include <sys/wait.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 
 static char const *program_name;
@@ -34,11 +34,42 @@ get_next_byte (void *stream)
   return getc (stream);
 }
 
+bool no_dependency(int cmd_num)
+{
+  int i, j;
+  for(i=0; i<total_file; i++){
+    if(depend_list[cmd_num][i].output > 0){
+      for(j=cmd_num-1; j>=0; j--){
+        if(depend_list[j][i].input > 0 || depend_list[j][i].output > 0){
+          return false;
+        }
+      }
+    }else if(depend_list[cmd_num][i].input > 0){
+      for(j=cmd_num-1; j>=0; j--){
+        if(depend_list[j][i].output > 0){
+          return false;
+        }
+      }    
+    }
+  }
+  return true;
+} 
+
+void update_dependency(int cmd_num)
+{
+  int i;
+  for(i=0; i<total_file; i++){
+    depend_list[cmd_num][i].input = 0;
+    depend_list[cmd_num][i].output = 0;
+  }
+  return;
+}
+
 int
 main (int argc, char **argv)
 {
-  total_cmd = 0;//
-  total_file = 0;//
+  total_cmd = 0;
+  total_file = 0;
   int command_number = 1;
   bool print_tree = false;
   bool time_travel = false;
@@ -70,7 +101,7 @@ main (int argc, char **argv)
 
   printf("TOTAL: %d\n", total_cmd);
   
-  if(time_travel){
+  if(!time_travel){
     while ((command = read_command_stream (command_stream)))
     {
       if (print_tree){
@@ -112,7 +143,7 @@ main (int argc, char **argv)
         pid_t cpid;
           
         //fork and execute commands with no dependency problem and that the command hasn't been run
-        if(cpid_list[c_count] ==0 && no_dependency(temp_cmd)){
+        if(cpid_list[c_count] ==0 && no_dependency(c_count)){
            cpid = fork();
            //child execute the command
            if(cpid == 0){
