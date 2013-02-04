@@ -169,7 +169,8 @@ main (int argc, char **argv)
         }
       }
     }
-    
+    free(cpid_list);
+    while ((command = read_command_stream (command_stream))){}
     //deallocate dependcy lists
     int k;
     for(k=0; k<total_cmd; k++){
