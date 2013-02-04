@@ -98,8 +98,6 @@ main (int argc, char **argv)
 
   command_t last_command = NULL;
   command_t command;
-
-  printf("TOTAL: %d\n", total_cmd);
   
   if(!time_travel){
     while ((command = read_command_stream (command_stream)))
@@ -110,17 +108,6 @@ main (int argc, char **argv)
 	  }else{
 	    last_command = command;
 	    execute_command (command, time_travel);
-        /*
-        int i,j;
-        for(i=0;i<total_cmd;i++){
-          printf("row: %d\n", i);
-          for(j=0;j<total_file;j++){
-            printf("input: %d, ", depend_list[i][j].input);
-            printf("output: %d, ", depend_list[i][j].output);
-          }  
-          printf("\n");
-        }
-        */
 	  }
     }
   }else{
@@ -173,41 +160,24 @@ main (int argc, char **argv)
           //set the cpid to -1
           cpid_list[i] = -1;
         }
-      
       }
-      
       //if there are no more command
       done =  true;
       for(i=0; i<total_cmd; i++){
         if(cpid_list[i]==0){
           done = false;
         }
-      
       }
     }
-  
-  
-  
+    
+    //deallocate dependcy lists
+    int k;
+    for(k=0; k<total_cmd; k++){
+      free(depend_list[k]);
+    }
+    free(depend_list);
+    free(file_list);
   }
- /* }else{
-    int counter = 0;
-    while((command = read_command_stream(command_stream))){
-      counter++;
-      last_command = command;
-      pid_t cpid;
-      cpid = fork();
-      if(cpid == 0){
-        continue;
-      }else if(cpid > 0){
-        execute_command(command, time_travel);
-        int c_status;
-	    waitpid(cpid, &c_status, 0);
-        break;
-      }else{
-        error(1, 0, "Forking process failed");	
-      }
-    }
-  }*/
 
   return print_tree || !last_command ? 0 : command_status (last_command);
 }

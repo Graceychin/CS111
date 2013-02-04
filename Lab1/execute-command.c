@@ -62,7 +62,6 @@ void execute(command_t c)
 {
   pid_t cpid;
   cpid = fork();
-
   if(cpid >= 0){
     //child process executes the command
     if(cpid == 0){
@@ -73,8 +72,10 @@ void execute(command_t c)
       if(c->output != NULL){
         freopen(c->output, "w", stdout);
       }
-      execvp(c->u.word[0], c->u.word);
-      error(1, 0, "error executing command");
+
+      if(execvp(c->u.word[0], c->u.word) < 0){
+      	error(1, 0, "error executing command");
+	  }	
       fclose(stdin);
       fclose(stdout);
   
@@ -83,7 +84,6 @@ void execute(command_t c)
       int c_status;
       waitpid(cpid, &c_status, 0);
       c->status = c_status;
-      //printf("status:%d\n", c_status);
       return;
     }
   }else{
@@ -244,5 +244,4 @@ void
 execute_command (command_t c, bool time_travel)
 {
   execute_command_type(c);
-  //error (1, 0, "command execution not yet implemented");
 }

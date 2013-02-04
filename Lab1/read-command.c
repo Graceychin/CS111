@@ -247,6 +247,7 @@ command_t create_simple_command(char *s, int *p, const int size){
       }
      
       cmd->u.word[words_count] = w;
+
       words_count++;
       cmd->u.word[words_count] = NULL;
       //printf("return from is word, %d: [%c][%c]\n", *p, s[*p], s[*p +1]);
@@ -276,6 +277,25 @@ command_t create_simple_command(char *s, int *p, const int size){
   }
       /////////////////////////////    
  
+      int i;
+      for(i=1; i<words_count; i++){
+        int file_num = file_index(file_list, cmd->u.word[i]);
+        if(file_num != -1){
+          depend_list[total_cmd][file_num].input += 1;
+        }else{
+          total_file++;
+          file_list = (char**) realloc(file_list, sizeof(char*) * total_file);
+          file_list[total_file-1] = cmd->u.word[i];
+          int j;
+          for(j=0; j<=total_cmd; j++){
+            depend_list[j] = (struct depend*) realloc(depend_list[j], sizeof(struct depend) * total_file);
+            depend_list[j][total_file-1].input = 0;
+            depend_list[j][total_file-1].output = 0;
+          }
+          depend_list[total_cmd][total_file-1].input += 1;
+        }
+      }
+
   //subtract one to match the next space (or special) character
   (*p)-=2;
  

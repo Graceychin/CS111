@@ -1,8 +1,4 @@
-echo a > c && sleep 1
-echo a > c && sleep 1
-echo a > d && sleep 1
-
-
+echo a b > f  && sleep 1
 #echo hi || rm abcdefg && echo dont print me
 #cat abcdefg || rm abcdefg && echo dont print me
 #cat abcdefg ||  echo print me
