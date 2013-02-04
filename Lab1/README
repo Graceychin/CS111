@@ -1,9 +1,14 @@
-Lab1b_CS111_Winter 2013
+Lab1_CS111_Winter 2013
 
 Members: Justin Wei(003942248), Samping Chuang(603945890)
 
 Limitations:
-For pipecommands, our code will wait for the child that executes the last command in the pipe line. By doing this, we avoid 
 
+1A
+We read in the shell commands with the basic POSIX shell syntax rules that was supplied by the lab specs. We read in each complete command as a tree with operators with more precendence at a lower level on the tree. We create a linked list that holds all the complete commands.
 
-Not sure exactly how to treat exit status of the pipe command. According to the regular shell the pipe command's exit status is still good if the second commandworks, but the first does not. We are not sure whether or not pipe exit status should be good or not depending on the pipe's commands. For now we left the pipe exit status as good regardless of the two commands. 
+1B
+We implement the execute by doing a recursive function call on a function execute_command_type for each complete command. For and statements the second command is not executed if the first one fails. For or statements the second command is not executed if the first one succeeds. We are able to implement this logic by checking the exit statuses of previous commands. We were unsure how to implement the exit status of the pipe so we copied it with how we thought the regular shell implements it. We set the exit status of a pipe command as the last command in the pipe. 
+
+1C
+We implement parallelization by using processes and forks. We implement this in the main.c file and we fork a new child for every complete command. We only parallelized commands at the top level, so only the complete commands are parallelized not the simple commands in each complete command. We make a dependency list that stores the status of each file input and output for each complete command. 0 represents done, 1 represents read, 2 represents write. We create the dependency list inside read-command.c and the dependency list is checked inside main. Each process only starts to run a command when all of the files that it reads and writes too have no dependency conflicts according to the list. For our program we assume that all args of a simple command are files that are read. So, if a similar option was used in two different complete commands we would not be able to parallelize the two complete commands. 
