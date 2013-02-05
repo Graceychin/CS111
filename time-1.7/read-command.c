@@ -407,37 +407,27 @@ command_t create_general_command(char *s, int *p, const int size, bool sub_shell
 
 
 command_stream_t
-make_command_stream (int (*get_next_byte) (void *),
-             void *get_next_byte_argument)
+make_command_stream ( char* command_buffer)
 {
-  size_t bufferSize = 1024;
-  size_t read = 0;
-  int c;
-  char* buffer = (char*) checked_malloc(bufferSize);
- 
-  //first, read the entire script file into buffer
-  //NOTE: reading a character in at a time is extremely slow. Consider using fread to read the entire file into memory at once. (IO is expensive)
-  while((c = get_next_byte(get_next_byte_argument))!= EOF){
-    buffer[read++] = c;
-    if(read == bufferSize){
-      bufferSize *=2;
-      buffer = (char*) checked_grow_alloc(buffer, &bufferSize);
-    }
-  }
+  //get command size
  
   command_stream_t stream= init_command_stream();
   //parse the script
   int p;
-  int size = (int) read;
+  int size =0;
+  while(command_buffer[size]!='\0'){
+    size++;
+    if(DEBUG)
+      printf("[%d]: [%c]\n", size, command_buffer[size]);
+  }
+  printf("size: %d\n", size);
   line_num = 1;
   //start pos of current command
   for(p = 0; p < size; p++){
     //printf("Parsing commands..\n");
-    command_t cmd = create_general_command(buffer, &p, size, false);
+    command_t cmd = create_general_command(command_buffer, &p, size, false);
     
     if(cmd){
-  
-
       cc_node_t cnode = (cc_node_t) checked_malloc(sizeof(struct cc_node));
       cnode->next = NULL;
       cnode->c = cmd;
@@ -452,7 +442,6 @@ make_command_stream (int (*get_next_byte) (void *),
       }
     }
   }
-  free(buffer);
   return stream;
 }
 

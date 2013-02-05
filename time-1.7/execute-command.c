@@ -241,7 +241,7 @@ int execute_command_type(command_t c)
 }
 
 void
-execute_command (command_t c, bool time_travel)
+execute_command (command_t c)
 {
   execute_command_type(c);
 }

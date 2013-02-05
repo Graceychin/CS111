@@ -41,7 +41,7 @@ transform = s,x,x,
 bin_PROGRAMS = time
 info_TEXINFOS = time.texi
 time_SOURCES = time.c getopt.c getopt1.c error.c resuse.c version.c \
-        read-command.c execute-command.c alloc.c \
+        read-command.c execute-command.c alloc.c print-command.c\
 	getopt.h getpagesize.h resuse.h port.h wait.h \
         alloc.h command.h command-internals.h
 EXTRA_DIST = texinfo.tex
@@ -64,7 +64,7 @@ LIBS =
 COMPILE = $(CC) -c $(DEFS) $(INCLUDES) $(CPPFLAGS) $(CFLAGS)
 LINK = $(CC) $(LDFLAGS) -o $@
 time_OBJECTS = time.o getopt.o getopt1.o error.o resuse.o version.o \
-               alloc.o execute-command.o read-command.o
+               alloc.o execute-command.o read-command.o print-command.o
 EXTRA_time_SOURCES =
 time_LDADD = $(LDADD)
 

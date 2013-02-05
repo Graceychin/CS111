@@ -601,9 +601,11 @@ getargs (argc, argv)
    Put the statistics in *RESP.  */
 
 static void
-run_command (cmd, resp)
+run_command (cmd, resp, cmd2)
      char *const *cmd;
      RESUSE *resp;
+     command_t cmd2;
+     
 {
   pid_t pid;			/* Pid of child.  */
   sighandler interrupt_signal, quit_signal;
@@ -617,7 +619,9 @@ run_command (cmd, resp)
     {				/* If child.  */
       /* Don't cast execvp arguments; that causes errors on some systems,
 	 versus merely warnings if the cast is left off.  */
-      execvp (cmd[0], cmd);
+      //execvp (cmd[0], cmd);
+      execute_command (cmd2);
+      exit(0);
       error (0, errno, "cannot run %s", cmd[0]);
       _exit (errno == ENOENT ? 127 : 126);
     }
@@ -642,10 +646,37 @@ main (argc, argv)
   const char **command_line;
   RESUSE res;
   
-  printf("%d\n",argc);
-  exit(1);
-
   command_line = getargs (argc, argv);
+  
+  char* c = (char*)command_line[0];
+  int i=1;
+  while(c){
+    printf("%s\n",c);
+    c = command_line[i++];
+  }
+  
+  printf("create command stream..\n");
+  command_stream_t command_stream =
+    make_command_stream ((char*) command_line[0]);
+    int command_number = 1;
+   command_t command; 
+   while ((command = read_command_stream (command_stream))){
+
+	    printf ("# %d\n", command_number++);
+	    print_command (command);
+	    run_command (command_line, &res, command);
+
+  }
+  summarize (outfp, output_format, command_line, &res);
+  fflush (outfp);
+  exit(1);
+  /*
+  
+  */
+  //pass command_line[0] to buffer 
+  
+  
+  
   run_command (command_line, &res);
   summarize (outfp, output_format, command_line, &res);
   fflush (outfp);
@@ -663,10 +694,11 @@ usage (stream, status)
      FILE *stream;
      int status;
 {
+  //enforce format time
   fprintf (stream, "\
 Usage: %s [-apvV] [-f format] [-o file] [--append] [--verbose]\n\
        [--portability] [--format=format] [--output=file] [--version]\n\
-       [--help] command [arg...]\n",
+       [--help] \"command [arg...] ... (arbitrary commands)\"\n",
 	   program_name);
   exit (status);
 }

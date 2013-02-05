@@ -38,7 +38,7 @@
 #  define HZ 60
 # endif
 #endif
-
+#include <unistd.h>
 #include "resuse.h"
 
 /* Prepare to measure a child process.  */
@@ -77,15 +77,21 @@ resuse_end (pid, resp)
 
 #if HAVE_WAIT3
   pid_t caught;
-
   /* Ignore signals, but don't ignore the children.  When wait3
      returns the child process, set the time the command finished. */
-  while ((caught = wait3 (&status, 0, &resp->ru)) != pid)
+  /*while ((caught = wait3 (&status, 0, &resp->ru)) != pid)
     {
       if (caught == -1)
 	return 0;
     }
-
+*/
+ 
+while ((caught = wait4 (pid, &status, 0, &resp->ru) != pid))
+    {
+      if (caught == -1)
+	    return 0;
+    }
+  //&temp
   gettimeofday (&resp->elapsed, (struct timezone *) 0);
 #else  /* !HAVE_WAIT3 */
   long value;
@@ -94,7 +100,8 @@ resuse_end (pid, resp)
   pid = wait (&status);
   if (pid == -1)
     return 0;
-
+    printf("sleeping..\n");
+  sleep(1000);
   value = times (&tms);
 
   memset (&resp->ru, 0, sizeof (struct rusage));
@@ -103,9 +110,11 @@ resuse_end (pid, resp)
   resp->ru.ru_stime.tv_sec = tms.tms_cstime / HZ;
 
 #if HAVE_SYS_RUSAGE_H
+
   resp->ru.ru_utime.tv_nsec = tms.tms_cutime % HZ * (1000000000 / HZ);
   resp->ru.ru_stime.tv_nsec = tms.tms_cstime % HZ * (1000000000 / HZ);
 #else
+
   resp->ru.ru_utime.tv_usec = tms.tms_cutime % HZ * (1000000 / HZ);
   resp->ru.ru_stime.tv_usec = tms.tms_cstime % HZ * (1000000 / HZ);
 #endif
