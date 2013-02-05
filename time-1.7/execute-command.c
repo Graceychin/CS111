@@ -19,11 +19,29 @@ extern char**environ;
 
 
 void add_reuse(RESUSE *resp, RESUSE *temp){
-
-
-
-
-
+  resp->start.tv_sec  += temp->start.tv_sec;	
+  resp->start.tv_usec  += temp->start.tv_usec;	
+  resp->elapsed.tv_sec  += temp->elapsed.tv_sec;	
+  resp->elapsed.tv_usec  += temp->elapsed.tv_usec;	
+  
+  resp->ru.ru_utime.tv_sec  += temp->ru.ru_utime.tv_sec;	
+  resp->ru.ru_utime.tv_usec += temp->ru.ru_utime.tv_usec;
+  resp->ru.ru_stime.tv_sec  += temp->ru.ru_stime.tv_sec;	
+  resp->ru.ru_stime.tv_usec += temp->ru.ru_stime.tv_usec;	
+  resp->ru.ru_maxrss  +=temp->ru.ru_maxrss;
+  resp->ru.ru_ixrss   +=temp->ru.ru_ixrss;
+  resp->ru.ru_idrss   +=temp->ru.ru_idrss;
+  resp->ru.ru_isrss   +=temp->ru.ru_isrss; 
+  resp->ru.ru_minflt  +=temp->ru.ru_minflt;
+  resp->ru.ru_majflt  +=temp->ru.ru_majflt;
+  resp->ru.ru_nswap   +=temp->ru.ru_nswap;
+  resp->ru.ru_inblock +=temp->ru.ru_inblock;
+  resp->ru.ru_oublock +=temp->ru.ru_oublock;
+  resp->ru.ru_msgsnd  +=temp->ru.ru_msgsnd;
+  resp->ru.ru_msgrcv  +=temp->ru.ru_msgrcv; 
+  resp->ru.ru_nsignals+=temp->ru.ru_nsignals;
+  resp->ru.ru_nvcsw   +=temp->ru.ru_nvcsw;   
+  resp->ru.ru_nivcsw  +=temp->ru.ru_nivcsw; 
 }
 
 
@@ -102,7 +120,8 @@ void execute(command_t c, RESUSE *resp)
     int c_status;
     if (resuse_end (cpid, &temp) == 0)
       error (1, 0, "error waiting for child process");
-    *resp = temp;
+    
+    add_reuse(resp, &temp);
     c->status = c_status;
      return;
   
@@ -117,7 +136,7 @@ void execute_pipe(command_t c, RESUSE *resp)
     n_pipes++;
     temp = temp->u.command[0];
   } 
-
+  
   //get a linked list of commands for piping
   cc_node_t* temp_list = get_pipe_list(c, n_pipes);
   cc_node_t pipe_c = temp_list[n_pipes];

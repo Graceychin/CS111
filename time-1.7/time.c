@@ -643,6 +643,32 @@ run_command (cmd, resp, cmd2)
   signal (SIGINT, interrupt_signal);
   signal (SIGQUIT, quit_signal);
 }
+void initialize_rusage(RESUSE *resp){
+  resp->start.tv_sec  = 0;	
+  resp->start.tv_usec  = 0;	
+  resp->elapsed.tv_sec  = 0;	
+  resp->elapsed.tv_usec  = 0;	
+  
+  resp->ru.ru_utime.tv_sec  = 0;	
+  resp->ru.ru_utime.tv_usec = 0;
+  resp->ru.ru_stime.tv_sec  = 0;	
+  resp->ru.ru_stime.tv_usec = 0;	
+  resp->ru.ru_maxrss  =0;
+  resp->ru.ru_ixrss   =0;
+  resp->ru.ru_idrss   =0;
+  resp->ru.ru_isrss   =0;
+  resp->ru.ru_minflt  =0;
+  resp->ru.ru_majflt  =0;
+  resp->ru.ru_nswap   =0;
+  resp->ru.ru_inblock =0;
+  resp->ru.ru_oublock =0;
+  resp->ru.ru_msgsnd  =0;
+  resp->ru.ru_msgrcv  =0;
+  resp->ru.ru_nsignals=0;
+  resp->ru.ru_nvcsw   =0;
+  resp->ru.ru_nivcsw  =0;
+
+}
 
 void
 main (argc, argv)
@@ -651,7 +677,7 @@ main (argc, argv)
 {
   const char **command_line;
   RESUSE res;
-  
+  initialize_rusage(&res);
   command_line = getargs (argc, argv);
   subp_num = 0;
   char* c = (char*)command_line[0];
