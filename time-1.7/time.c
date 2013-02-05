@@ -40,6 +40,7 @@ extern int errno;
 void error PARAMS((int status, int errnum, char *message, ...));
 
 static void usage PARAMS((FILE *, int));
+extern int subp_num;
 
 /* A Pointer to a signal handler.  */
 typedef RETSIGTYPE (*sighandler) ();
@@ -647,7 +648,7 @@ main (argc, argv)
   RESUSE res;
   
   command_line = getargs (argc, argv);
-  
+  subp_num = 0;
   char* c = (char*)command_line[0];
   int i=1;
   while(c){
@@ -660,6 +661,7 @@ main (argc, argv)
     make_command_stream ((char*) command_line[0]);
     int command_number = 1;
    command_t command; 
+   printf("number of subprocess: %d\n", subp_num);
    while ((command = read_command_stream (command_stream))){
 
 	    printf ("# %d\n", command_number++);

@@ -27,7 +27,7 @@ command_t create_general_command(char *s, int *p, const int size, bool sub_shell
 /** Global Variable **/
 int line_num; //keep track of line number for error reports
 static bool DEBUG = false;
-
+extern int subp_num;
 
 /** Structure Declaration **/
 
@@ -247,7 +247,8 @@ command_t create_special_command(char *s, int *p, const int size, enum command_t
     exit(1);
   }
   command_t cmd = create_init_command(type);
- 
+  
+  subp_num++;
   //this gives pipes more precedence than && and ||
   if(type == PIPE_COMMAND && (left_c->type == AND_COMMAND || left_c->type == OR_COMMAND)){
 
@@ -428,9 +429,11 @@ make_command_stream ( char* command_buffer)
     command_t cmd = create_general_command(command_buffer, &p, size, false);
     
     if(cmd){
+       subp_num++;
       cc_node_t cnode = (cc_node_t) checked_malloc(sizeof(struct cc_node));
       cnode->next = NULL;
       cnode->c = cmd;
+      
       //first node
       if(!stream->root){
         stream->root = cnode;
@@ -442,6 +445,7 @@ make_command_stream ( char* command_buffer)
       }
     }
   }
+ 
   return stream;
 }
 

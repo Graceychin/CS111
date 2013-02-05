@@ -9,7 +9,9 @@ enum command_type
     SIMPLE_COMMAND,      // a simple command
     SUBSHELL_COMMAND,    // ( A )
   };
-  
+
+
+int subp_num;
 
 // Data associated with a command.
 struct command
