@@ -1,0 +1,56 @@
+// UCLA CS 111 Lab 1 command internals
+
+enum command_type
+  {
+    AND_COMMAND,         // A && B
+    SEQUENCE_COMMAND,    // A ; B
+    OR_COMMAND,          // A || B
+    PIPE_COMMAND,        // A | B
+    SIMPLE_COMMAND,      // a simple command
+    SUBSHELL_COMMAND,    // ( A )
+  };
+  
+struct depend
+{
+  int input;
+  int output;
+};
+
+//Dependency list, 1 is read, 2 is write, 0 is no conflict
+struct depend **depend_list;
+int total_cmd;
+char **file_list;
+int total_file;
+
+
+// Data associated with a command.
+struct command
+{
+  enum command_type type;
+
+  // Exit status, or -1 if not known (e.g., because it has not exited yet).
+  int status;
+
+  // I/O redirections, or null if none.
+  char *input;
+  char *output;
+
+  union
+  {
+    // for AND_COMMAND, SEQUENCE_COMMAND, OR_COMMAND, PIPE_COMMAND:
+    struct command *command[2];
+
+    // for SIMPLE_COMMAND:
+    char **word;
+
+    // for SUBSHELL_COMMAND:
+    struct command *subshell_command;
+  } u;
+};
+
+struct cc_node
+{
+  struct command* c;
+  struct cc_node* next;
+};
+

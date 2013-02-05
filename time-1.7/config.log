@@ -1,0 +1,25 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:627: gcc -E conftest.c
+configure:685: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:812: gcc -o conftest -g -O   conftest.c  1>&5
+configure:838: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:903: gcc -o conftest -g -O   conftest.c  1>&5
+configure: In function 'main':
+configure:898: warning: incompatible implicit declaration of built-in function 'exit'
+configure:944: gcc -c -g -O  conftest.c 1>&5
+configure:976: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:976: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:976: gcc -E  conftest.c >/dev/null 2>conftest.out
+configure:972:24: error: sys/rusage.h: No such file or directory
+configure:1056: gcc -c -g -O  conftest.c 1>&5
+configure:1162: gcc -c -g -O  conftest.c 1>&5
+configure:1231: gcc -o conftest -g -O   conftest.c  1>&5
+configure:1214: warning: conflicting types for built-in function 'vprintf'
+configure:1342: gcc -o conftest -g -O   conftest.c  1>&5
+configure: In function 'main':
+configure:1331: warning: incompatible implicit declaration of built-in function '_exit'
+configure:1336: warning: incompatible implicit declaration of built-in function 'exit'
+configure:1391: gcc -o conftest -g -O   conftest.c  1>&5
+configure:1424: gcc -o conftest -g -O   conftest.c  1>&5
