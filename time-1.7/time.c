@@ -626,7 +626,7 @@ run_command (cmd, resp, cmd2)
       /* Don't cast execvp arguments; that causes errors on some systems,
 	 versus merely warnings if the cast is left off.  */
       //execvp (cmd[0], cmd);
-      execute_command (cmd2);
+      //execute_command (cmd2);
       exit(0);
       error (0, errno, "cannot run %s", cmd[0]);
       _exit (errno == ENOENT ? 127 : 126);
@@ -670,7 +670,8 @@ main (argc, argv)
    while ((command = read_command_stream (command_stream))){
 	    printf ("# %d\n", command_number++);
 	    print_command (command);
-	    run_command (command_line, &res, command);
+	    //run_command (command_line, &res, command);
+	    execute_command (command, &res);
   }
   summarize (outfp, output_format, command_line, &res);
   fflush (outfp);

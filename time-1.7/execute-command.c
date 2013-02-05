@@ -15,6 +15,18 @@
 static bool DEBUG = false;
 extern char**environ;
 
+
+
+
+void add_reuse(RESUSE *resp, RESUSE *temp){
+
+
+
+
+
+}
+
+
 int
 command_status (command_t c)
 {
@@ -58,13 +70,18 @@ cc_node_t* get_pipe_list(command_t c, int num_pipes){
 
 }
 
-void execute(command_t c)
+void execute(command_t c, RESUSE *resp)
 {
+  RESUSE temp;
+  resuse_start (&temp);
+  
   pid_t cpid;
   cpid = fork();
-  if(cpid >= 0){
+ 
     //child process executes the command
-    if(cpid == 0){
+   if(cpid <0)
+      error(1, 0, "Forking process failed");  
+   else if(cpid == 0){
     //open up file descriptors
       if(c->input != NULL){
         freopen(c->input, "r", stdin);
@@ -79,19 +96,19 @@ void execute(command_t c)
       fclose(stdin);
       fclose(stdout);
   
-    }else{
-    //parent process closes file descriptors after child executes and exits
-      int c_status;
-      waitpid(cpid, &c_status, 0);
-      c->status = c_status;
-      return;
     }
-  }else{
-    error(1, 0, "Forking process failed");   
-  }
+    
+    //wait child
+    int c_status;
+    if (resuse_end (cpid, &temp) == 0)
+      error (1, 0, "error waiting for child process");
+    *resp = temp;
+    c->status = c_status;
+     return;
+  
 }
 
-void execute_pipe(command_t c)
+void execute_pipe(command_t c, RESUSE *resp)
 {
   //calculate the number of pipes
   int n_pipes = 0;
@@ -191,15 +208,15 @@ void execute_pipe(command_t c)
 }
 
 
-int execute_command_type(command_t c)
+int execute_command_type(command_t c, RESUSE *resp)
 {
   switch(c->type){
     case AND_COMMAND:    
       //don't execute next command if first one fails
-      if(execute_command_type(c->u.command[0]) > 0){
+      if(execute_command_type(c->u.command[0], resp) > 0){
         c->status = command_status(c->u.command[0]);
       }else{
-        c->status = execute_command_type(c->u.command[1]);
+        c->status = execute_command_type(c->u.command[1], resp);
       }
       if(DEBUG){
         printf("AND:%d\n", c->status);
@@ -208,10 +225,10 @@ int execute_command_type(command_t c)
 
     case OR_COMMAND:
       //don't execute next command if first one already works
-      if(execute_command_type(c->u.command[0]) == 0){
+      if(execute_command_type(c->u.command[0], resp) == 0){
         c->status = 0;
       }else{
-        c->status = execute_command_type(c->u.command[1]);
+        c->status = execute_command_type(c->u.command[1], resp);
       }
       if(DEBUG){
         printf("OR:%d\n", c->status);
@@ -220,20 +237,20 @@ int execute_command_type(command_t c)
 
     case PIPE_COMMAND:
       
-      execute_pipe(c);
+      execute_pipe(c, resp);
       break;
 
     case SUBSHELL_COMMAND:
-      c->status = execute_command_type(c->u.subshell_command);
+      c->status = execute_command_type(c->u.subshell_command, resp);
       break;
 
     case SIMPLE_COMMAND:
-      execute(c);
+      execute(c, resp);
       break;
 
     case SEQUENCE_COMMAND:
-      execute_command_type(c->u.command[0]);
-      execute_command_type(c->u.command[1]);
+      execute_command_type(c->u.command[0], resp);
+      execute_command_type(c->u.command[1], resp);
       c->status = 0;
       break;
   }
@@ -241,7 +258,7 @@ int execute_command_type(command_t c)
 }
 
 void
-execute_command (command_t c)
+execute_command (command_t c, RESUSE *resp)
 {
-  execute_command_type(c);
+  execute_command_type(c, resp);
 }
