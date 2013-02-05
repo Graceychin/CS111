@@ -137,6 +137,7 @@ void execute_pipe(command_t c, RESUSE *resp)
     temp = temp->u.command[0];
   } 
   
+  pid_t *cpid_list = (pid_t*) checked_malloc(sizeof(pid_t) * (n_pipes+1));
   //get a linked list of commands for piping
   cc_node_t* temp_list = get_pipe_list(c, n_pipes);
   cc_node_t pipe_c = temp_list[n_pipes];
@@ -197,6 +198,7 @@ void execute_pipe(command_t c, RESUSE *resp)
       fclose(stdin);
     
     }else if(cpid >0){
+      cpid_list[count] = cpid;
 
       if(count !=0){
         close(pipe_fd[0]);
@@ -214,6 +216,11 @@ void execute_pipe(command_t c, RESUSE *resp)
   
   }
   if(count>1){
+    int j=0;
+    for (; j<count; j++){
+      printf("child: %d\n", cpid_list[j]);
+    
+    }
     close(pipe_fd[0]);
     close(pipe_fd[1]);
     int status;
