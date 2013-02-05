@@ -12,22 +12,89 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+
 static bool DEBUG = false;
 extern char**environ;
 
 
 
+void add_reuse_pipe(RESUSE *resp, RESUSE *temp, int count){
+    
+  long int max_elapsed_sec  =temp[0].elapsed.tv_sec;
+  long int max_elapsed_usec =temp[0].elapsed.tv_usec;	
+  long int max_utime_sec    =temp[0].ru.ru_utime.tv_sec;	
+  long int max_utime_usec   =temp[0].ru.ru_utime.tv_usec;
+  long int max_stime_sec    =temp[0].ru.ru_stime.tv_sec;	
+  long int max_stime_usec   =temp[0].ru.ru_stime.tv_usec;	
+  int i;
+  for(i=1; i<count; i++){
+    if(max_elapsed_sec < temp[i].elapsed.tv_sec){
+      max_elapsed_sec  =temp[i].elapsed.tv_sec;
+      max_elapsed_usec  =temp[i].elapsed.tv_usec;
+      
+    }else if(max_elapsed_sec == temp[i].elapsed.tv_sec && max_elapsed_usec < temp[i].elapsed.tv_usec){
+       max_elapsed_usec  =temp[i].elapsed.tv_usec;
+    
+    
+    }
+    if(max_utime_sec  < temp[i].ru.ru_utime.tv_sec){
+      max_utime_sec   =temp[i].ru.ru_utime.tv_sec;
+      max_utime_usec   =temp[i].ru.ru_utime.tv_usec;
+    }else if(max_utime_sec == temp[i].ru.ru_utime.tv_sec && max_utime_usec < temp[i].ru.ru_utime.tv_usec){
+       max_utime_usec   =temp[i].ru.ru_utime.tv_usec;
+    
+    
+    }
+    if(max_stime_sec < temp[i].ru.ru_stime.tv_sec){
+      max_stime_sec  =temp[i].ru.ru_stime.tv_sec;
+      max_stime_usec  =temp[i].ru.ru_stime.tv_usec;
+    }else if(max_stime_sec == temp[i].ru.ru_stime.tv_sec && max_stime_usec < temp[i].ru.ru_stime.tv_usec){
+       max_stime_usec  =temp[i].ru.ru_stime.tv_usec;
+    
+    
+    }
+    
+
+  
+  }
+
+    resp->elapsed.tv_sec  += max_elapsed_sec;	
+    resp->elapsed.tv_usec  += max_elapsed_usec;	
+  
+    resp->ru.ru_utime.tv_sec  += max_utime_sec;	
+    resp->ru.ru_utime.tv_usec += max_utime_usec;
+    resp->ru.ru_stime.tv_sec  += max_stime_sec;	
+    resp->ru.ru_stime.tv_usec += max_stime_usec;	
+  resp->ru.ru_maxrss  +=temp->ru.ru_maxrss;
+  resp->ru.ru_ixrss   +=temp->ru.ru_ixrss;
+  resp->ru.ru_idrss   +=temp->ru.ru_idrss;
+  resp->ru.ru_isrss   +=temp->ru.ru_isrss; 
+  resp->ru.ru_minflt  +=temp->ru.ru_minflt;
+  resp->ru.ru_majflt  +=temp->ru.ru_majflt;
+  resp->ru.ru_nswap   +=temp->ru.ru_nswap;
+  resp->ru.ru_inblock +=temp->ru.ru_inblock;
+  resp->ru.ru_oublock +=temp->ru.ru_oublock;
+  resp->ru.ru_msgsnd  +=temp->ru.ru_msgsnd;
+  resp->ru.ru_msgrcv  +=temp->ru.ru_msgrcv; 
+  resp->ru.ru_nsignals+=temp->ru.ru_nsignals;
+  resp->ru.ru_nvcsw   +=temp->ru.ru_nvcsw;   
+  resp->ru.ru_nivcsw  +=temp->ru.ru_nivcsw; 
+}
 
 void add_reuse(RESUSE *resp, RESUSE *temp){
-  resp->start.tv_sec  += temp->start.tv_sec;	
-  resp->start.tv_usec  += temp->start.tv_usec;	
-  resp->elapsed.tv_sec  += temp->elapsed.tv_sec;	
-  resp->elapsed.tv_usec  += temp->elapsed.tv_usec;	
+ 
+    resp->start.tv_sec  += temp->start.tv_sec;	
+    resp->start.tv_usec  += temp->start.tv_usec;	
+    resp->elapsed.tv_sec  += temp->elapsed.tv_sec;	
+    resp->elapsed.tv_usec  += temp->elapsed.tv_usec;	
   
-  resp->ru.ru_utime.tv_sec  += temp->ru.ru_utime.tv_sec;	
-  resp->ru.ru_utime.tv_usec += temp->ru.ru_utime.tv_usec;
-  resp->ru.ru_stime.tv_sec  += temp->ru.ru_stime.tv_sec;	
-  resp->ru.ru_stime.tv_usec += temp->ru.ru_stime.tv_usec;	
+    resp->ru.ru_utime.tv_sec  += temp->ru.ru_utime.tv_sec;	
+    resp->ru.ru_utime.tv_usec += temp->ru.ru_utime.tv_usec;
+    resp->ru.ru_stime.tv_sec  += temp->ru.ru_stime.tv_sec;	
+    resp->ru.ru_stime.tv_usec += temp->ru.ru_stime.tv_usec;	
+  
+
   resp->ru.ru_maxrss  +=temp->ru.ru_maxrss;
   resp->ru.ru_ixrss   +=temp->ru.ru_ixrss;
   resp->ru.ru_idrss   +=temp->ru.ru_idrss;
@@ -138,6 +205,7 @@ void execute_pipe(command_t c, RESUSE *resp)
   } 
   
   pid_t *cpid_list = (pid_t*) checked_malloc(sizeof(pid_t) * (n_pipes+1));
+  RESUSE *temp_resp = (RESUSE*) checked_malloc(sizeof(RESUSE) * (n_pipes+1));
   //get a linked list of commands for piping
   cc_node_t* temp_list = get_pipe_list(c, n_pipes);
   cc_node_t pipe_c = temp_list[n_pipes];
@@ -155,7 +223,7 @@ void execute_pipe(command_t c, RESUSE *resp)
     if(pipe_c->next){
       pipe(new_fd);
     }
-    
+    resuse_start (&temp_resp[count]);
     cpid = fork();
     
     if(cpid == 0){
@@ -216,19 +284,29 @@ void execute_pipe(command_t c, RESUSE *resp)
   
   }
   if(count>1){
-    int j=0;
-    for (; j<count; j++){
-      printf("child: %d\n", cpid_list[j]);
+
     
-    }
     close(pipe_fd[0]);
     close(pipe_fd[1]);
     int status;
-    waitpid(cpid, &status, 0);
+    //decrement count by one to point to the last index
+    int j=count-1;
+    printf("count size; %d\n", count);
+    for (; j>=0; j--){
+      if (resuse_end (cpid_list[j], &temp_resp[j]) == 0)
+        error (1, 0, "error waiting for child process");
+      
+    }
+    //add them up
+    add_reuse_pipe(resp, temp_resp, count);
+    
+    //waitpid(cpid, &status, 0);
     c->status = status;
   }
   //fclose(stdin);
   //free memory
+  free(temp_resp);
+  free(cpid_list);
   free_pipe_list(temp_list);
   return;
 }
