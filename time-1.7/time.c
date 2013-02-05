@@ -109,7 +109,7 @@ typedef RETSIGTYPE (*sighandler) ();
 /* The default output format.  */
 static const char *const default_format =
 "%Uuser %Ssystem %Eelapsed %PCPU (%Xavgtext+%Davgdata %Mmaxresident)k\n\
-%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps";
+%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps %Nprocesses";
 
 /* The output format for the -p option .*/
 static const char *const posix_format = "real %e\nuser %U\nsys %S";
@@ -148,7 +148,8 @@ static const char *const longstats[] =
   "\tSocket messages received: %r\n",
   "\tSignals delivered: %k\n",
   "\tPage size (bytes): %Z\n",
-  "\tExit status: %x",
+  "\tExit status: %x\n",
+  "\tNumber of Processes: %N",
   NULL
 };
 
@@ -297,6 +298,7 @@ ptok (pages)
 *  I == file system inputs (ru_inblock)
 *  K == average total mem usage (ru_idrss+ru_isrss+ru_ixrss)
 *  M == maximum resident set size in K (ru_maxrss)
+*  N == number of subprocesses
 *  O == file system outputs (ru_oublock)
 *  P == percent of CPU this job got (total cpu time / elapsed time)
 *  R == minor page faults (reclaims; no physical I/O involved) (ru_minflt)
@@ -401,6 +403,9 @@ summarize (fp, fmt, command, resp)
 	    case 'M':		/* Maximum resident set size.  */
 	      fprintf (fp, "%lu", ptok ((UL) resp->ru.ru_maxrss));
 	      break;
+        case 'N':
+          fprintf(fp, "%d", subp_num);
+          break;
 	    case 'O':		/* Outputs.  */
 	      fprintf (fp, "%ld", resp->ru.ru_oublock);
 	      break;
@@ -663,11 +668,9 @@ main (argc, argv)
    command_t command; 
    printf("number of subprocess: %d\n", subp_num);
    while ((command = read_command_stream (command_stream))){
-
 	    printf ("# %d\n", command_number++);
 	    print_command (command);
 	    run_command (command_line, &res, command);
-
   }
   summarize (outfp, output_format, command_line, &res);
   fflush (outfp);
