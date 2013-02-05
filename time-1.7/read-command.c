@@ -405,7 +405,6 @@ command_t create_general_command(char *s, int *p, const int size, bool sub_shell
       }     
       
     }else if(c == ';'){
-    printf(";!\n");
       //A semicolon has to come after some command
       if(!left_command){
         fprintf(stderr,"%d: There has to be some commands before the token ';'.\n", line_num);
