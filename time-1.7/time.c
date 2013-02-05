@@ -34,6 +34,9 @@ extern int errno;
 #include "resuse.h"
 #include "getpagesize.h"
 
+#include "command-internals.h"
+#include "command.h"
+
 void error PARAMS((int status, int errnum, char *message, ...));
 
 static void usage PARAMS((FILE *, int));
@@ -97,7 +100,8 @@ typedef RETSIGTYPE (*sighandler) ();
 /* Return the number of clock ticks that occur in M milliseconds.  */
 #define MSEC_TO_TICKS(m) ((m) / MSEC_PER_TICK)
 
-typedef enum {false, true} boolean;
+//changed
+//typedef enum {false, true} boolean;
 
 #define UL unsigned long
 
@@ -148,7 +152,8 @@ static const char *const longstats[] =
 };
 
 /* If true, show an English description next to each statistic.  */
-static boolean verbose;
+//change
+static bool verbose;
 
 /* Name of output file.  Only used if -o option is given.  */
 static const char *outfile;
@@ -156,8 +161,9 @@ static const char *outfile;
 /* Output stream, stderr by default.  */
 static FILE *outfp;
 
+//change
 /* If true, append to `outfile' rather than truncating it.  */
-static boolean append;
+static bool append;
 
 /* The output format string.  */
 static const char *output_format;
