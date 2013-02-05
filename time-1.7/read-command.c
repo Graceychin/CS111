@@ -11,14 +11,7 @@
 #include <stdarg.h>
 #include <ctype.h>
 
-//static variables
-extern struct depend **depend_list;
-extern int total_cmd;
-extern char **file_list;
-extern int total_file;
-
 /** Function Declaration **/
-int file_index(char** list, char* file);
 bool isSpecial(char c);
 bool isInvalid(char c);
 int isWord(char c);
@@ -46,15 +39,6 @@ struct command_stream
   struct cc_node* last;
 };
 
-//finds file inside list, CHANGE
-int file_index(char** list, char* file){
-  int i;
-  for(i=0; i<total_file; i++){
-    if(strcmp(list[i], file) == 0)
-      return i;
-  }
-  return -1;
-}
 /** Auxilary Function **/
 bool isSpecial(char c){
   return (c == '|' || c == '&' || c ==';'|| c ==')' || c =='(');
@@ -78,8 +62,6 @@ command_stream_t init_command_stream(){
   command_stream_t cst = (command_stream_t) checked_malloc(sizeof(struct command_stream));
   cst->root = NULL;
   cst->last = NULL;
-  //realloc dependency list, CHANGE, NEED TO DEALLOCATE
-  depend_list = (struct depend**) realloc(depend_list, sizeof(struct depend*) * 1);
   return cst;
 }
 
@@ -192,22 +174,7 @@ command_t create_simple_command(char *s, int *p, const int size){
         fprintf(stderr,"%d: No file name for input redirect.\n", line_num);
         exit(1);
       }
-      //add in file to file list, have to check if in list, CHANGE
-      int file_num = file_index(file_list, cmd->input);
-      if(file_num != -1){
-        depend_list[total_cmd][file_num].input += 1;
-      }else{
-        total_file++;
-        file_list = (char**) realloc(file_list, sizeof(char*) * total_file);
-        file_list[total_file-1] = cmd->input;
-        int j;
-        for(j=0; j<=total_cmd; j++){
-          depend_list[j] = (struct depend*) realloc(depend_list[j], sizeof(struct depend) * total_file);
-          depend_list[j][total_file-1].input = 0;
-          depend_list[j][total_file-1].output = 0;
-        }
-        depend_list[total_cmd][total_file-1].input += 1;
-      }
+
       //maybe add error here check if input is NULL
     }else if(c  == '>'){
       if(cmd->output){
@@ -221,22 +188,7 @@ command_t create_simple_command(char *s, int *p, const int size){
         fprintf(stderr,"%d: No file name for output redirect.\n", line_num);
         exit(1);
       }
-      //add in file to file list, have to check if in list, CHANGE
-      int file_num = file_index(file_list, cmd->output);
-      if(file_num != -1){
-        depend_list[total_cmd][file_num].output += 2;
-      }else{
-        total_file++;
-        file_list = (char**) realloc(file_list, sizeof(char*) * total_file);
-        file_list[total_file-1] = cmd->output;
-        int j;
-        for(j=0; j<=total_cmd; j++){
-          depend_list[j] = (struct depend*) realloc(depend_list[j], sizeof(struct depend) * total_file);
-          depend_list[j][total_file-1].input = 0;
-          depend_list[j][total_file-1].output = 0;
-        }
-        depend_list[total_cmd][total_file-1].output += 2;
-      }
+ 
 
     }else if(isWord(c)){
       char* w = read_next_token(s, p, size);
@@ -276,28 +228,7 @@ command_t create_simple_command(char *s, int *p, const int size){
           printf (", %s", *ww);
        printf("]\n");
   }
-      /////////////////////////////    
  
-      
-      int i;
-      for(i=1; i<words_count; i++){       
-        int file_num = file_index(file_list, cmd->u.word[i]);
-        if(file_num != -1){
-          depend_list[total_cmd][file_num].input += 1;
-        }else{
-          total_file++;
-          file_list = (char**) realloc(file_list, sizeof(char*) * total_file);
-          file_list[total_file-1] = cmd->u.word[i];
-          int j;
-          for(j=0; j<=total_cmd; j++){
-            depend_list[j] = (struct depend*) realloc(depend_list[j], sizeof(struct depend) * total_file);
-            depend_list[j][total_file-1].input = 0;
-            depend_list[j][total_file-1].output = 0;
-          }
-          depend_list[total_cmd][total_file-1].input += 1;
-        }
-      }
-      
       
 
   //subtract one to match the next space (or special) character
@@ -505,15 +436,7 @@ make_command_stream (int (*get_next_byte) (void *),
     command_t cmd = create_general_command(buffer, &p, size, false);
     
     if(cmd){
-      total_cmd++;
-      //reallocating dependency list and initializing values
-      depend_list = (struct depend**) realloc(depend_list, sizeof(struct depend*) * (total_cmd+1));
-      depend_list[total_cmd] = (struct depend*) checked_malloc(sizeof(struct depend) * total_file);
-      int i;
-      for(i=0; i<total_file; i++){
-        depend_list[total_cmd][i].input = 0;
-        depend_list[total_cmd][i].output = 0;
-      }
+  
 
       cc_node_t cnode = (cc_node_t) checked_malloc(sizeof(struct cc_node));
       cnode->next = NULL;
@@ -545,9 +468,4 @@ read_command_stream (command_stream_t s)
     return cmd;
   }
   return NULL;
-}
-
-cc_node_t
-get_root(command_stream_t s){
-  return s->root;  
 }

@@ -641,6 +641,9 @@ main (argc, argv)
 {
   const char **command_line;
   RESUSE res;
+  
+  printf("%d\n",argc);
+  exit(1);
 
   command_line = getargs (argc, argv);
   run_command (command_line, &res);
