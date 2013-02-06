@@ -108,7 +108,7 @@ typedef RETSIGTYPE (*sighandler) ();
 
 /* The default output format.  */
 static const char *const default_format =
-"User Cpu Time: %U\nSystem Cpu Time: %S\nElapsed Time: %E\nMemory in kb: %M\nNumber of Subprocesses: %N";
+"User CPU Time(m:ss): %U\nSystem CPU Time(m:ss): %S\nElapsed Time(h:mm:ss or m:ss): %E\nMemory in kB: %M\nNumber of Subprocesses: %N";
 
 /* The output format for the -p option .*/
 static const char *const posix_format = "real %e\nuser %U\nsys %S";
