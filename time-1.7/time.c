@@ -108,8 +108,7 @@ typedef RETSIGTYPE (*sighandler) ();
 
 /* The default output format.  */
 static const char *const default_format =
-"%Uuser %Ssystem %Eelapsed %PCPU (%Xavgtext+%Davgdata %Mmaxresident)k\n\
-%Iinputs+%Ooutputs (%Fmajor+%Rminor)pagefaults %Wswaps %Nprocesses";
+"User Cpu Time: %U\nSystem Cpu Time: %S\nElapsed Time: %E\nMemory in kb: %M\nNumber of Subprocesses: %N";
 
 /* The output format for the -p option .*/
 static const char *const posix_format = "real %e\nuser %U\nsys %S";
@@ -643,6 +642,7 @@ run_command (cmd, resp, cmd2)
   signal (SIGINT, interrupt_signal);
   signal (SIGQUIT, quit_signal);
 }
+
 void initialize_rusage(RESUSE *resp){
   resp->start.tv_sec  = 0;	
   resp->start.tv_usec  = 0;	
@@ -653,21 +653,20 @@ void initialize_rusage(RESUSE *resp){
   resp->ru.ru_utime.tv_usec = 0;
   resp->ru.ru_stime.tv_sec  = 0;	
   resp->ru.ru_stime.tv_usec = 0;	
-  resp->ru.ru_maxrss  =0;
-  resp->ru.ru_ixrss   =0;
-  resp->ru.ru_idrss   =0;
-  resp->ru.ru_isrss   =0;
-  resp->ru.ru_minflt  =0;
-  resp->ru.ru_majflt  =0;
-  resp->ru.ru_nswap   =0;
-  resp->ru.ru_inblock =0;
-  resp->ru.ru_oublock =0;
-  resp->ru.ru_msgsnd  =0;
-  resp->ru.ru_msgrcv  =0;
-  resp->ru.ru_nsignals=0;
-  resp->ru.ru_nvcsw   =0;
-  resp->ru.ru_nivcsw  =0;
-
+  resp->ru.ru_maxrss  = 0;
+  resp->ru.ru_ixrss   = 0;
+  resp->ru.ru_idrss   = 0;
+  resp->ru.ru_isrss   = 0;
+  resp->ru.ru_minflt  = 0;
+  resp->ru.ru_majflt  = 0;
+  resp->ru.ru_nswap   = 0;
+  resp->ru.ru_inblock = 0;
+  resp->ru.ru_oublock = 0;
+  resp->ru.ru_msgsnd  = 0;
+  resp->ru.ru_msgrcv  = 0;
+  resp->ru.ru_nsignals= 0;
+  resp->ru.ru_nvcsw   = 0;
+  resp->ru.ru_nivcsw  = 0;
 }
 
 void
@@ -683,35 +682,19 @@ main (argc, argv)
   char* c = (char*)command_line[0];
   int i=1;
   while(c){
-    printf("%s\n",c);
     c = command_line[i++];
   }
   
-  printf("create command stream..\n");
-  command_stream_t command_stream =
-    make_command_stream ((char*) command_line[0]);
-    int command_number = 1;
-   command_t command; 
-   printf("number of subprocess: %d\n", subp_num);
-   while ((command = read_command_stream (command_stream))){
-	    printf ("# %d\n", command_number++);
-	    print_command (command);
-	    //run_command (command_line, &res, command);
-	    execute_command (command, &res);
+  command_stream_t command_stream = make_command_stream ((char*) command_line[0]);
+  int command_number = 1;
+  command_t command; 
+  while ((command = read_command_stream (command_stream))){
+    execute_command (command, &res);
   }
+
   summarize (outfp, output_format, command_line, &res);
   fflush (outfp);
   exit(1);
-  /*
-  
-  */
-  //pass command_line[0] to buffer 
-  
-  
-  
-  run_command (command_line, &res);
-  summarize (outfp, output_format, command_line, &res);
-  fflush (outfp);
 
   if (WIFSTOPPED (res.waitstatus))
     exit (WSTOPSIG (res.waitstatus));

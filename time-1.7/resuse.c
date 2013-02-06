@@ -100,7 +100,6 @@ while ((caught = wait4 (pid, &status, 0, &resp->ru) != pid))
   pid = wait (&status);
   if (pid == -1)
     return 0;
-    printf("sleeping..\n");
   sleep(1000);
   value = times (&tms);
 
@@ -131,7 +130,6 @@ while ((caught = wait4 (pid, &status, 0, &resp->ru) != pid))
       --resp->elapsed.tv_sec;
     }
   resp->elapsed.tv_usec -= resp->start.tv_usec;
-  printf("[%d] elapsed tv sec: %d\n", (int)pid, (int)resp->elapsed.tv_usec);
   resp->waitstatus = status;
 
   return 1;

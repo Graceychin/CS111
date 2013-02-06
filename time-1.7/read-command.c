@@ -421,7 +421,6 @@ make_command_stream ( char* command_buffer)
     if(DEBUG)
       printf("[%d]: [%c]\n", size, command_buffer[size]);
   }
-  printf("size: %d\n", size);
   line_num = 1;
   //start pos of current command
   for(p = 0; p < size; p++){
