@@ -65,11 +65,11 @@ typedef struct osprd_info {
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
 
-  //add a dependency list for locks/blocking
+    //add a dependency list for locks/blocking
 
-  unsigned int num_write_locks;
-  unsigned int num_read_locks;
-  unsigned int tasks_waiting;
+    unsigned int num_write_locks;
+    unsigned int num_read_locks;
+    unsigned int tasks_waiting;
 
 	// The following elements are used internally; you don't need
 	// to understand them.
@@ -202,7 +202,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 {
 	osprd_info_t *d = file2osprd(filp);	// device info
 	int r = 0;			// return value: initially 0
-  DEFINE_WAIT(wait);
+    DEFINE_WAIT(wait);
 
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
