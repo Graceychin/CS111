@@ -64,12 +64,10 @@ typedef struct osprd_info {
 
 	/* HINT: You may want to add additional fields to help
 	         in detecting deadlock. */
-
-    //add a dependency list for locks/blocking
-
+   
+    int **dependency_list;
     unsigned int num_write_locks;
     unsigned int num_read_locks;
-    unsigned int tasks_waiting;
 
 	// The following elements are used internally; you don't need
 	// to understand them.
@@ -149,7 +147,6 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
     eprintk("Request was neither a read or write");
     end_request(req, 0);
   }
-
 	end_request(req, 1);
 }
 
@@ -179,6 +176,18 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		// as appropriate.
 
 		// Your code here.
+    if((filp->f_flags & F_OSPRD_LOCKED) != 0){
+      filp->f_flags &= ~F_OSPRD_LOCKED; 
+      if(filp_writable){
+        d->num_write_locks--;
+      }else{
+        d->num_read_locks--;
+      }
+
+      if(d->num_read_locks == 0 && d->num_write_locks == 0)
+        wake_up_all(&d->blockq);
+    }
+  
 
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
@@ -252,84 +261,64 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		eprintk("Attempting to acquire\n");
     
     //ADD: Need to check for dead lock. Make a check_for_cycle function in dependency graph.
-    
+
     if(filp_writable){
       //write lock    
+      unsigned local_ticket = d->ticket_head;
       osp_spin_lock(&d->mutex);
-      //if there are any tasks waiting to acquire, put task on queue
-      if(d->tasks_waiting > 0){
-        prepare_to_wait_exclusive(&d->blockq, &wait, TASK_INTERRUPTIBLE);
-        d->tasks_waiting++;
-        osp_spin_unlock(&d->mutex);
-        schedule(); //task is blocked
-        
-        osp_spin_lock(&d->mutex);
-        finish_wait(&d->blockq, &wait);
-        d->tasks_waiting--;
-        osp_spin_unlock(&d->mutex);
-      }
-
-      //if there are any tasks currently with a lock, put on queue
+      d->ticket_head++;
+      osp_spin_unlock(&d->mutex);
       for(;;){
         osp_spin_lock(&d->mutex);
-        if(d->num_read_locks == 0 && d->num_write_locks == 0){
+        if(d->num_read_locks == 0 && d->num_write_locks == 0 && local_ticket == d->ticket_tail)
           break;
+        osp_spin_unlock(&d->mutex);
+        wait_event_interruptible(d->blockq, d->num_read_locks == 0 && d->num_write_locks == 0 && local_ticket == d->ticket_tail);
+        //check for signals
+        if(signal_pending(current)){
+          eprintk("head: %d, tail: %d, local: %d\n", d->ticket_head, d->ticket_tail, local_ticket);
+          osp_spin_lock(&d->mutex);
+          if(d->ticket_tail == local_ticket) //check this if
+            d->ticket_tail++;
+          osp_spin_unlock(&d->mutex);
+          return -ERESTARTSYS;
         }
-        //check that this puts task in right order on queue
-        prepare_to_wait_exclusive(&d->blockq, &wait, TASK_INTERRUPTIBLE);
-        d->tasks_waiting++;
-        osp_spin_unlock(&d->mutex);
-        schedule();
-
-        osp_spin_lock(&d->mutex);
-        finish_wait(&d->blockq, &wait);
-        d->tasks_waiting--;
-        osp_spin_unlock(&d->mutex);
       }
       
+      d->ticket_tail++;
       d->num_write_locks++;
       filp->f_flags |= F_OSPRD_LOCKED;
       osp_spin_unlock(&d->mutex);
     }else{
-      //read lock
+      //write lock    
+      unsigned local_ticket = d->ticket_head;
       osp_spin_lock(&d->mutex);
-      //if there are any tasks waiting to acquire, put task on queue
-      if(d->tasks_waiting > 0){
-        prepare_to_wait_exclusive(&d->blockq, &wait, TASK_INTERRUPTIBLE);
-        d->tasks_waiting++;
-        osp_spin_unlock(&d->mutex);
-        schedule(); //task is blocked
-        
-        osp_spin_lock(&d->mutex);
-        finish_wait(&d->blockq, &wait);
-        d->tasks_waiting--;
-        osp_spin_unlock(&d->mutex);
-      }
-
-      //if there are any tasks currently with a lock, put on queue
+      d->ticket_head++;
+      osp_spin_unlock(&d->mutex);
+      
       for(;;){
         osp_spin_lock(&d->mutex);
-        if(d->num_write_locks == 0){
+        if(d->num_write_locks == 0 && local_ticket == d->ticket_tail)
           break;
+        osp_spin_unlock(&d->mutex);
+        wait_event_interruptible(d->blockq, d->num_read_locks == 0 && d->num_write_locks == 0 && local_ticket == d->ticket_tail);
+        
+        //check for signals
+        if(signal_pending(current)){
+          eprintk("head: %d, tail: %d, local: %d\n", d->ticket_head, d->ticket_tail, local_ticket);
+          osp_spin_lock(&d->mutex);
+          if(d->ticket_tail == local_ticket)//check this if
+            d->ticket_tail++;;
+          osp_spin_unlock(&d->mutex);
+          return -ERESTARTSYS;
         }
-        //check that this puts task in right order on queue
-        prepare_to_wait_exclusive(&d->blockq, &wait, TASK_INTERRUPTIBLE);
-        d->tasks_waiting++;
-        osp_spin_unlock(&d->mutex);
-        schedule();
-
-        osp_spin_lock(&d->mutex);
-        finish_wait(&d->blockq, &wait);
-        d->tasks_waiting--;
-        osp_spin_unlock(&d->mutex);
       }
       
+      d->ticket_tail++;
       d->num_read_locks++;
       filp->f_flags |= F_OSPRD_LOCKED;
       osp_spin_unlock(&d->mutex);
     }
-    //r = -ENOTTY;
-
 	} else if (cmd == OSPRDIOCTRYACQUIRE) {
 
 		// EXERCISE: ATTEMPT to lock the ramdisk.
@@ -354,6 +343,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         osp_spin_unlock(&d->mutex);
       }
     }else{
+      osp_spin_lock(&d->mutex);
       if(d->num_write_locks > 0){
           osp_spin_unlock(&d->mutex);
           r = -EBUSY;
@@ -363,7 +353,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         osp_spin_unlock(&d->mutex);
       }
     }
-    //r = -ENOTTY;
 	} else if (cmd == OSPRDIOCRELEASE) {
 return r;
 		// EXERCISE: Unlock the ramdisk.
@@ -374,9 +363,9 @@ return r;
 		// you need, and return 0.
 
 		// Your code here (instead of the next line).
-		
+		eprintk("Attempting to release\n");
     osp_spin_lock(&d->mutex);
-    if((filp->f_flags & F_OSPRD_LOCKED) != 0){
+    if((filp->f_flags & F_OSPRD_LOCKED) == 0){
       osp_spin_unlock(&d->mutex);
       r = -EINVAL;
     }else{
@@ -390,10 +379,9 @@ return r;
 
       if(d->num_read_locks == 0 && d->num_write_locks == 0)
         wake_up_all(&d->blockq);
-      //possibly have to reset tasks_waiting value
+
       osp_spin_unlock(&d->mutex);
     }
-    //r = -ENOTTY;
 	} else
 		r = -ENOTTY; /* unknown command */
 	return r;
@@ -410,7 +398,7 @@ static void osprd_setup(osprd_info_t *d)
 	/* Add code here if you add fields to osprd_info_t. */
   d->num_write_locks = 0;
   d->num_read_locks = 0;
-  d->tasks_waiting = 0;
+  //dependency_list = 
 }
 
 
@@ -598,7 +586,6 @@ static int __init osprd_init(void)
 	} else
 		return 0;
 }
-
 
 // The kernel calls this function to unload the osprd module.
 // It destroys the osprd devices.
