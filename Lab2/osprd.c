@@ -176,6 +176,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		// as appropriate.
 
 		// Your code here.
+    osprd_ioctl(inode, filp, OSPRDIOCRELEASE, -1);
+    /*
     if((filp->f_flags & F_OSPRD_LOCKED) != 0){
       filp->f_flags &= ~F_OSPRD_LOCKED; 
       if(filp_writable){
@@ -187,8 +189,7 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
       if(d->num_read_locks == 0 && d->num_write_locks == 0)
         wake_up_all(&d->blockq);
     }
-  
-
+    */
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
 
@@ -270,6 +271,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
       osp_spin_unlock(&d->mutex);
       for(;;){
         osp_spin_lock(&d->mutex);
+        eprintk("read: %d, write: %d\n", d->num_read_locks, d->num_write_locks);
         if(d->num_read_locks == 0 && d->num_write_locks == 0 && local_ticket == d->ticket_tail)
           break;
         osp_spin_unlock(&d->mutex);
@@ -290,7 +292,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
       filp->f_flags |= F_OSPRD_LOCKED;
       osp_spin_unlock(&d->mutex);
     }else{
-      //write lock    
+      //read lock    
       unsigned local_ticket = d->ticket_head;
       osp_spin_lock(&d->mutex);
       d->ticket_head++;
@@ -343,6 +345,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         osp_spin_unlock(&d->mutex);
       }
     }else{
+      //read lock
       osp_spin_lock(&d->mutex);
       if(d->num_write_locks > 0){
           osp_spin_unlock(&d->mutex);
@@ -354,7 +357,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
       }
     }
 	} else if (cmd == OSPRDIOCRELEASE) {
-return r;
+
 		// EXERCISE: Unlock the ramdisk.
 		//
 		// If the file hasn't locked the ramdisk, return -EINVAL.
