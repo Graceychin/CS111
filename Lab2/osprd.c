@@ -59,6 +59,7 @@ typedef struct osprd_info {
 	unsigned ticket_tail;		// Next available ticket for
 					// the device lock
 
+
 	wait_queue_head_t blockq;       // Wait queue for tasks blocked on
 					// the device lock
 
@@ -68,6 +69,12 @@ typedef struct osprd_info {
     int **dependency_list;
     unsigned int num_write_locks;
     unsigned int num_read_locks;
+	  int write_owner;
+		int id;
+		//for signal interruptions
+		int *skip_list;
+		int skip_count;
+
 
 	// The following elements are used internally; you don't need
 	// to understand them.
@@ -79,7 +86,7 @@ typedef struct osprd_info {
 
 #define NOSPRD 4
 static osprd_info_t osprds[NOSPRD];
-
+int dependency_list[NOSPRD][NOSPRD];
 
 // Declare useful helper functions
 
@@ -134,7 +141,7 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 
   //check if read or write is too large to process
   if (offset + size > nsectors * SECTOR_SIZE){
-    eprintk("Read or write too large");
+    //eprintk("Read or write too large");
     end_request(req, 0);
   }
 
@@ -145,7 +152,7 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
   }else if (rq_data_dir(req) == WRITE){
     memcpy(d->data + offset, req->buffer, size);
   }else{
-    eprintk("Request was neither a read or write");
+    //eprintk("Request was neither a read or write");
     end_request(req, 0);
   }
 	end_request(req, 1);
@@ -177,9 +184,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 		// as appropriate.
 
 		// Your code here.
-    osprd_ioctl(inode, filp, OSPRDIOCRELEASE, -1);
+    //osprd_ioctl(inode, filp, OSPRDIOCRELEASE, -1);
     
-/*
     if((filp->f_flags & F_OSPRD_LOCKED) != 0){
       filp->f_flags &= ~F_OSPRD_LOCKED; 
       if(filp_writable){
@@ -190,8 +196,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 
       if(d->num_read_locks == 0 && d->num_write_locks == 0)
         wake_up_all(&d->blockq);
-    }*/
-
+    }
+    
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
 
@@ -215,7 +221,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 	osprd_info_t *d = file2osprd(filp);	// device info
 	int r = 0;			// return value: initially 0
     DEFINE_WAIT(wait);
-
+	int i = 0;
 	// is file open for writing?
 	int filp_writable = (filp->f_mode & FMODE_WRITE) != 0;
 
@@ -263,32 +269,52 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Your code here (instead of the next two lines).
 		//eprintk("Attempting to acquire\n");
     
+		//remove this part
+		//eprintk("number: %d\n",d->ticket_head);
     //ADD: Need to check for dead lock. Make a check_for_cycle function in dependency graph.
+		if(current->pid == d->write_owner && filp_writable){
+			return -EDEADLK;
+		}		
 
+		
     if(filp_writable){
       //write lock    
-      osp_spin_lock(&d->mutex);
       unsigned local_ticket = d->ticket_head;
+
+      osp_spin_lock(&d->mutex);
       d->ticket_head++;
       osp_spin_unlock(&d->mutex);
       for(;;){
         osp_spin_lock(&d->mutex);
+        //eprintk("read: %d, write: %d\n", d->num_read_locks, d->num_write_locks);
         if(d->num_read_locks == 0 && d->num_write_locks == 0 && local_ticket == d->ticket_tail)
           break;
         osp_spin_unlock(&d->mutex);
         wait_event_interruptible(d->blockq, d->num_read_locks == 0 && d->num_write_locks == 0 && local_ticket == d->ticket_tail);
         //check for signals
         if(signal_pending(current)){
+          //eprintk("head: %d, tail: %d, local: %d\n", d->ticket_head, d->ticket_tail, local_ticket);
           osp_spin_lock(&d->mutex);
           if(d->ticket_tail == local_ticket) //check this if
-            d->ticket_tail++;
-            osp_spin_unlock(&d->mutex);
-          return -ERESTARTSYS;
+          	d->ticket_tail++;
+		  	//add this local tail to the list of tickets we want to skip
+		  	d->skip_list[d->skip_count] = local_ticket;
+		  	//eprintk("signal: block %d\n", local_ticket);
+		  	d->skip_count++;		
+          	osp_spin_unlock(&d->mutex);
+          	return -ERESTARTSYS;
         }
       }
-      
+      //eprintk("at write ticket tail increase\n");
       d->ticket_tail++;
+			
+			for(i=0; i<d->skip_count; i++){
+				if(d->skip_list[i] == d->ticket_tail){
+					d->ticket_tail++;
+				}
+			}
       d->num_write_locks++;
+			d->write_owner = current->pid;
       filp->f_flags |= F_OSPRD_LOCKED;
       osp_spin_unlock(&d->mutex);
     }else{
@@ -307,15 +333,26 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         //check for signals
         if(signal_pending(current)){
+          //eprintk("head: %d, tail: %d, local: %d\n", d->ticket_head, d->ticket_tail, local_ticket);
           osp_spin_lock(&d->mutex);
           if(d->ticket_tail == local_ticket)//check this if
             d->ticket_tail++;;
-          osp_spin_unlock(&d->mutex);
+					//add this to the list we want to skip for interruped processes
+					d->skip_list[d->skip_count] = local_ticket;  
+					//eprintk("signal: block %d\n", local_ticket);        
+					d->skip_count++;
+					osp_spin_unlock(&d->mutex);
           return -ERESTARTSYS;
         }
       }
-      
+      //eprintk("at read ticket tail increase\n");
       d->ticket_tail++;
+	
+			for(i=0; i<d->skip_count; i++){
+				if(d->skip_list[i] == d->ticket_tail){
+					d->ticket_tail++;
+				}
+			}
       d->num_read_locks++;
       filp->f_flags |= F_OSPRD_LOCKED;
       osp_spin_unlock(&d->mutex);
@@ -340,6 +377,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
           r = -EBUSY;
       }else{
         d->num_write_locks++;
+				d->write_owner = current->pid;
         filp->f_flags |= F_OSPRD_LOCKED;
         osp_spin_unlock(&d->mutex);
       }
@@ -375,6 +413,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 
       if(filp_writable){
         d->num_write_locks--;
+				d->write_owner = -1;
       }else{
         d->num_read_locks--;
       }
@@ -390,7 +429,8 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 }
 
 // Initialize internal fields for an osprd_info_t.
-
+#define MAX_PROCESS 100
+static int DISK_ID =0;
 static void osprd_setup(osprd_info_t *d)
 {
 	/* Initialize the wait queue. */
@@ -399,8 +439,14 @@ static void osprd_setup(osprd_info_t *d)
 	d->ticket_head = d->ticket_tail = 0;
 	/* Add code here if you add fields to osprd_info_t. */
   d->num_write_locks = 0;
+	d->id = DISK_ID;
+	DISK_ID++;
+	//eprintk("DISK ID: %d\n", d->id);
   d->num_read_locks = 0;
-  //dependency_list = 
+  d->dependency_list = (int **)kmalloc(sizeof(int)*MAX_PROCESS * MAX_PROCESS, GFP_ATOMIC);
+	d->skip_list = (int*)kmalloc(sizeof(int)*MAX_PROCESS, GFP_ATOMIC);
+	d->skip_count = 0;
+	d->write_owner = -1;
 }
 
 

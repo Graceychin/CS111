@@ -14,9 +14,10 @@ Student ID: 003942248
 Email: hottfro@gmail.com
 
 # Partner 2
-#Name: Samping Chuang
-#Student ID: Partner's ID Here
-#Email: Partner's Email Here
+Name: Samping Chuang
+Student ID: 603945890
+Email: sam4609ping1892@gmail.com
 
 
 # Add any other information you'd like us to have below this line.
+We couldn't figure out how to implement dependency graph across multiple ramdisks to prevent deadlocks due to cycled process dependencies. We tried making an 2 dimensional array within the osprd_info but it doesn't help with dependencies across multiple disk (for exmaple, reading from a disk and write to another).
