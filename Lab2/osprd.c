@@ -127,7 +127,7 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
 	// 'req->buffer' members, and the rq_data_dir() function.
 
 	// Your code here.
-	eprintk("Should process request...\n");
+	//eprintk("Should process request...\n");
 
   long offset = req->sector * SECTOR_SIZE; //determine offset for specific sector
   long size = req->current_nr_sectors * SECTOR_SIZE; //get size of read/write
@@ -138,6 +138,7 @@ static void osprd_process_request(osprd_info_t *d, struct request *req)
     end_request(req, 0);
   }
 
+  
   //need to switch memcpy to copy_from_user and copy_to_user without generating errors
   if (rq_data_dir(req) == READ){
     memcpy(req->buffer, d->data + offset, size);
@@ -177,7 +178,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 
 		// Your code here.
     osprd_ioctl(inode, filp, OSPRDIOCRELEASE, -1);
-    /*
+    
+/*
     if((filp->f_flags & F_OSPRD_LOCKED) != 0){
       filp->f_flags &= ~F_OSPRD_LOCKED; 
       if(filp_writable){
@@ -188,8 +190,8 @@ static int osprd_close_last(struct inode *inode, struct file *filp)
 
       if(d->num_read_locks == 0 && d->num_write_locks == 0)
         wake_up_all(&d->blockq);
-    }
-    */
+    }*/
+
 		// This line avoids compiler warnings; you may remove it.
 		(void) filp_writable, (void) d;
 
@@ -259,30 +261,28 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// be protected by a spinlock; which ones?)
 
 		// Your code here (instead of the next two lines).
-		eprintk("Attempting to acquire\n");
+		//eprintk("Attempting to acquire\n");
     
     //ADD: Need to check for dead lock. Make a check_for_cycle function in dependency graph.
 
     if(filp_writable){
       //write lock    
-      unsigned local_ticket = d->ticket_head;
       osp_spin_lock(&d->mutex);
+      unsigned local_ticket = d->ticket_head;
       d->ticket_head++;
       osp_spin_unlock(&d->mutex);
       for(;;){
         osp_spin_lock(&d->mutex);
-        eprintk("read: %d, write: %d\n", d->num_read_locks, d->num_write_locks);
         if(d->num_read_locks == 0 && d->num_write_locks == 0 && local_ticket == d->ticket_tail)
           break;
         osp_spin_unlock(&d->mutex);
         wait_event_interruptible(d->blockq, d->num_read_locks == 0 && d->num_write_locks == 0 && local_ticket == d->ticket_tail);
         //check for signals
         if(signal_pending(current)){
-          eprintk("head: %d, tail: %d, local: %d\n", d->ticket_head, d->ticket_tail, local_ticket);
           osp_spin_lock(&d->mutex);
           if(d->ticket_tail == local_ticket) //check this if
             d->ticket_tail++;
-          osp_spin_unlock(&d->mutex);
+            osp_spin_unlock(&d->mutex);
           return -ERESTARTSYS;
         }
       }
@@ -307,7 +307,6 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
         
         //check for signals
         if(signal_pending(current)){
-          eprintk("head: %d, tail: %d, local: %d\n", d->ticket_head, d->ticket_tail, local_ticket);
           osp_spin_lock(&d->mutex);
           if(d->ticket_tail == local_ticket)//check this if
             d->ticket_tail++;;
@@ -331,7 +330,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// Otherwise, if we can grant the lock request, return 0.
 
 		// Your code here (instead of the next two lines).
-		eprintk("Attempting to try acquire\n");
+		//eprintk("Attempting to try acquire\n");
     if(filp_writable){
       //write lock    
       osp_spin_lock(&d->mutex);
@@ -366,7 +365,7 @@ int osprd_ioctl(struct inode *inode, struct file *filp,
 		// you need, and return 0.
 
 		// Your code here (instead of the next line).
-		eprintk("Attempting to release\n");
+		//eprintk("Attempting to release\n");
     osp_spin_lock(&d->mutex);
     if((filp->f_flags & F_OSPRD_LOCKED) == 0){
       osp_spin_unlock(&d->mutex);
