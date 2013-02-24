@@ -804,7 +804,7 @@ add_block(ospfs_inode_t *oi)
 		indir_ptr[(n-OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT] = block;
 	}
 
-	oi->oi_size += OSPFS_BLKSIZE;
+	oi->oi_size = OSPFS_BLKSIZE * (n+1);
 	return 0;
 }
 
@@ -846,7 +846,7 @@ remove_block(ospfs_inode_t *oi)
 
 	if(indir2_index(n) == -1){
 		if(indir_index(n) == -1){
-			free(oi->oi_direct[n]);	
+			free_block(oi->oi_direct[n]);	
 			oi->oi_direct[n] = 0;
 		}else if(indir_index(n) == 0){
 			//Indirect block should exist
@@ -856,12 +856,12 @@ remove_block(ospfs_inode_t *oi)
 
 			//Deallocate block
 			uint32_t *indir_ptr = ospfs_block(oi->oi_indirect);
-			free(indir_ptr[direct_index(n)]); 
+			free_block(indir_ptr[direct_index(n)]); 
 			indir_ptr[direct_index(n)] = 0;
 			
 			//Deallocate indirect block if have to
 			if(n == OSPFS_NDIRECT+1){
-				free(oi->oi_indirect);
+				free_block(oi->oi_indirect);
 				oi->oi_indirect = 0;
 			}
 		}	
@@ -873,23 +873,23 @@ remove_block(ospfs_inode_t *oi)
 		//Deallocate block
 		uint32_t *indir2_ptr = ospfs_block(oi->oi_indirect2);
 		uint32_t *indir_ptr = ospfs_block(indir2_ptr[indir_index(n)]);
-		free(indir_ptr[(n-OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT]);
+		free_block(indir_ptr[(n-OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT]);
 		indir_ptr[(n-OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT] = 0;
 
 		//Deallocate indirect block if have to
 		if((n-OSPFS_NDIRECT-OSPFS_NINDIRECT) % OSPFS_NINDIRECT == 1){			
-			free(indir2_ptr[indir_index(n)]);
+			free_block(indir2_ptr[indir_index(n)]);
 			indir2_ptr[indir_index(n)] = 0;
 		}
 
 		//Deallocate indirect2 block if have to
 		if(n == OSPFS_NDIRECT + OSPFS_NINDIRECT + 1){
-			free(oi->oi_indirect2);
+			free_block(oi->oi_indirect2);
 			oi->oi_indirect2 = 0;	
 		}
 	}
 
-	oi->oi_size -= OSPFS_BLKSIZE;
+	oi->oi_size = OSPFS_BLKSIZE * (n-1);
 	return 0;
 }
 
@@ -936,20 +936,39 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	uint32_t old_size = oi->oi_size;
 	int r = 0;
 
-	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
-		/* EXERCISE: Your code here */
-		add_block(oi)		
-		return -EIO; // Replace this line
-	}
+	/* EXERCISE: Your code here */
+	//Grow file
+	if(ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)){
+		while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size) && r >= 0){
+			r = add_block(oi);
+		}
+		//Shrink file back to original if there is an error
+		if(r < 0){
+			//Only shrink till old_size + the blocksize - 1, avoids the extra time when add
+			//rounds up 
+			while(ospfs_size2nblocks(oi->oi_size) > old_size + OSPFS_BLKSIZE - 1){
+				remove_block(oi);			
+			}
+			oi->oi_size = old_size;
+			return r;
+		}
 
-	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
-	        /* EXERCISE: Your code here */
-		return -EIO; // Replace this line
-	}
+		//Subtract excess size if add rounded up
+		oi->oi_size -= OSPFS_BLKSIZE - old_size % OSPFS_BLKSIZE; 
+	//Shrink file
+	}else if(ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)){
+		while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size) && r >= 0) {
+			r = remove_block(oi);
+		}
 
-	/* EXERCISE: Make sure you update necessary file meta data
-	             and return the proper value. */
-	return -EIO; // Replace this line
+		//If error return error and exit
+		if(r < 0)
+			return r;
+
+		//Add excess size if remove rounded down
+		oi->oi_size += old_size % OSPFS_BLKSIZE;
+	}	
+	return 0;
 }
 
 
