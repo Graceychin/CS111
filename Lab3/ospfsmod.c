@@ -446,15 +446,12 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 	/* EXERCISE: Your code here */
 	// actual entries
 	while (r == 0 && ok_so_far >= 0 && f_pos >= 2 && f_pos < dir_oi->oi_size) {
-		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, f_pos);
-		ospfs_inode_t *entry_oi = ospfs_inode(od->od_ino);
-
-		//check if need this. This exits if directory is empty
-		if(!entry_oi)
-			break;
+		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, f_pos-2);
+		ospfs_inode_t *entry_oi = ospfs_inode(od->od_ino);			
 
 		//Skip entry if inode number is 0
-		if(od->od_ino > 0){
+		if(od->od_ino > 0 && entry_oi){			
+			//eprintk("inode: %d, name:%s\n", od->od_ino, od->od_name);
 			switch(entry_oi->oi_ftype){
 					case OSPFS_FTYPE_REG:
 						ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, DT_REG);
@@ -469,18 +466,19 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 						break;
 
 					default:
-						break;
+						r = 0;
+						continue;
 			}
 			
 			//If error on filldir exit while loop and return 0
 			if(ok_so_far < 0){
-				break;			
+				return 0;		
 			}
 		}
 
 		//Advance f_pos by dir entry size, if at the end of the directory, set 'r' to 1 and exit
-		f_pos += sizeof(struct ospfs_direntry);
-		if(f_pos >= dir_oi->oi_size){
+		f_pos += sizeof(OSPFS_DIRENTRY_SIZE);
+		if(f_pos-2 >= dir_oi->oi_size){
 			r = 1;		
 		}
 	}
@@ -938,7 +936,7 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 
 	/* EXERCISE: Your code here */
 	//Grow file
-eprintk("size:%d, size2: %d\n", oi->oi_size, new_size);
+	//eprintk("size:%d, size2: %d\n", oi->oi_size, new_size);
 	if(ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)){
 		while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size) && r >= 0){
 			r = add_block(oi);
@@ -1221,7 +1219,25 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    entries and return one of them.
 
 	/* EXERCISE: Your code here. */
-	return ERR_PTR(-EINVAL); // Replace this line
+	int f_pos = 0;
+	int r;
+	//Search for empty directory
+	for(; f_pos < dir_oi->oi_size; f_pos+= OSPFS_DIRENTRY_SIZE){
+			ospfs_direntry_t *od = ospfs_inode_data(dir_oi, f_pos);
+			if(od->od_ino == 0){
+				return od;			
+			}
+	} 
+
+	//No empty directories found, so add a new block
+	r = change_size(dir_oi, dir_oi->oi_size + OSPFS_BLKSIZE);
+	//Check for error
+	if(r < 0){
+		return ERR_PTR(r);	
+	}
+
+	//Don't know if this is right, get the pos of the newly added block
+	return ospfs_inode_data(dir_oi, f_pos);
 }
 
 // ospfs_link(src_dentry, dir, dst_dentry
@@ -1293,9 +1309,58 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 {
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 0;
-	/* EXERCISE: Your code here. */
-	return -EINVAL; // Replace this line
 
+	/* EXERCISE: Your code here. */
+	//Check if file name is too long
+	if(dentry->d_name.len > OSPFS_MAXNAMELEN)
+		return -ENAMETOOLONG;
+
+	//Check if file already exists in directory
+	if(find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len))
+		return -EEXIST;
+	
+	//Find an empty direntry to store new file
+	ospfs_direntry_t *od = create_blank_direntry(dir_oi);
+	if(IS_ERR(od))
+		return PTR_ERR(od);
+	
+	//Find free inode in inode block
+	int i;
+	for(i = ospfs_super->os_firstinob; i < ospfs_super->os_ninodes; i++){
+		//Break if inode is free
+		ospfs_inode_t *oi = ospfs_inode(i);
+		if(oi->oi_nlink == 0)
+			break;		
+	}
+	
+	//Could not find any free inodes.
+	if(i >= ospfs_super->os_ninodes)
+		return -ENOSPC;
+
+	//Store new file in empty direntry
+	od->od_ino = i;
+	int j;
+	for(j = 0; j < dentry->d_name.len; j++){
+		od->od_name[j] = dentry->d_name.name[j];
+	}
+	od->od_name[j] = '\0';
+
+	//Set inode
+	ospfs_inode_t *oi = ospfs_inode(i);
+	oi->oi_size = 0;
+	oi->oi_ftype = OSPFS_FTYPE_REG;
+	oi->oi_nlink = 1;
+	oi->oi_mode = mode;
+	oi->oi_indirect = 0;
+	oi->oi_indirect2 = 0;
+	int k;
+	for(k = 0; k < OSPFS_NDIRECT; k++){
+		oi->oi_direct[k] = 0;	
+	}
+	
+	//eprintk("create:%s\n", dentry->d_name.name);
+
+	entry_ino = od->od_ino;
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
 	   getting here. */
