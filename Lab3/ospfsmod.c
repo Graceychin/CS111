@@ -1282,10 +1282,6 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 
 	ospfs_inode_t *dir_oi =  ospfs_inode(dir->i_ino);
 	ospfs_inode_t *dummy_i;
-	//eprintk("Attempting link:\n source (real data): %s inode %d\n destination: %s\n",
-		src_dentry->d_name.name,
-		src_dentry->d_inode->i_ino,
-		dst_dentry->d_name.name);
 
 	//if name is too long
 	if(dst_dentry->d_name.len > OSPFS_MAXNAMELEN)
@@ -1608,6 +1604,6 @@ module_init(init_ospfs_fs)
 module_exit(exit_ospfs_fs)
 
 // Information about the module
-MODULE_AUTHOR("Skeletor");
+MODULE_AUTHOR("Justin Wei, Samping Chuang");
 MODULE_DESCRIPTION("OSPFS");
 MODULE_LICENSE("GPL");
