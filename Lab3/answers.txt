@@ -16,11 +16,12 @@ Student ID: 603945890
 Email: sam4609ping1892@gmail.com
 
 # Partner 2 (if you're working in a team)
-Name: 
-Student ID: 
-Email: 
+Name: Justin Wei
+Student ID: 003942248
+Email: hottfro@gmail.com
 
 # Extra credit problems
 #Extra credit problem: none
 
 # Add any other information you'd like us to know below this line.
+The conditional symbolic link doesn't work for some reason. I tried the sample code provided on the spec and it didn't work in normal shell either. I get the response "cat: amiroot: No such file or directory"
