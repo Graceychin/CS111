@@ -1,0 +1,45 @@
+# Fill in your name, student ID, and email address in this file.
+# If you are working in a team, fill out the information for both team 
+# members.
+
+# SUBMIT THE LAB ONLY ONCE (from only one partner). This file will be
+# automatically parsed in order to give both team members credit for the
+# lab.
+
+# You need to fill in the EXERCISE sections describing your solutions
+# for Tasks 1, 2, and 3, as well as write the corresponding code.
+# If you did one or more extra credit problems, indicate which one in the
+# appropriate section below (remove the # sign first). If you have any other
+# information you'd like us to know, please add it at the end of the file.
+
+# Partner 1
+Name: Justin Wei
+Student ID: 003942248
+Email: hottfro@gmail.com
+
+# Partner 2 (if you're working in a team)
+Name: 
+Student ID: 
+Email: 
+
+# EXERCISE 1: What method you used to make your peer download and upload
+#    files in parallel?  (~1-3 sentences)
+	Used processes and forking. Use a seperate process for each file that is downloaded
+or being upload. This part is really brief and short. 
+
+# EXERCISE 2A: What conditions did you find and fix that would have
+#    triggered a buffer overrun bug?  (~1-3 sentences each)
+	Whenever there is a strcpy there may be bufferoverflow if the source is too big. I added
+in a limit to the number of bytes transferred over using strncpy. This was applicable for
+a few task->filename copies. 
+
+# EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
+#    each)
+
+# EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
+#    are they attacks?  (~3-10 sentences each)
+
+# Extra credit problems
+#Extra credit problem: none
+
+# Add any other information you'd like us to know below this line.
