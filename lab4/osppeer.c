@@ -411,6 +411,7 @@ static void register_files(task_t *tracker_task, const char *myalias)
 	if ((dir = opendir(".")) == NULL)
 		die("open directory: %s", strerror(errno));
 	while ((ent = readdir(dir)) != NULL) {
+		//message("in loop\n");
 		int namelen = strlen(ent->d_name);
 
 		// don't depend on unreliable parts of the dirent structure
@@ -480,9 +481,12 @@ task_t *start_download(task_t *tracker_task, const char *filename)
 
 	//Buffer overflow possibility
 	int size = strlen(filename);
-	if(size > FILENAMESIZ)
-		size = FILENAMESIZ;
+	if(size > FILENAMESIZ){
+		size = FILENAMESIZ;	
+	}
 	strncpy(t->filename, filename, size);
+	//add null terminator 
+	t->filename[FILENAMESIZ-1] = '\0';
 
 	// add peers
 	s1 = tracker_task->buf;
@@ -544,6 +548,7 @@ static void task_download(task_t *t, task_t *tracker_task)
 			if(size > FILENAMESIZ)
 				size = FILENAMESIZ;
 			strncpy(t->disk_filename, t->filename, size);
+			t->disk_filename[FILENAMESIZ-1] = '\0';
 		}else{
 			sprintf(t->disk_filename, "%s~%d~", t->filename, i);
 		}
@@ -805,13 +810,16 @@ int main(int argc, char *argv[])
 	register_files(tracker_task, myalias);
 	
 	pid_t cpid;
+	//message("done regisering\n");
 	// First, download files named on command line.
 	for (; argc > 1; argc--, argv++){
+		//message("in loop\n");
 		if((t = start_download(tracker_task, argv[1]))){
+			
 			cpid = fork();
 			if(cpid == 0){
 				task_download(t, tracker_task);	
-				exit(0);		
+				_exit(0);		
 			}else if(cpid > 0){
 				continue;
 			}else{
@@ -819,13 +827,14 @@ int main(int argc, char *argv[])
 			}		
 		}
 	}
-	
+	message("accept connections?\n");
 	// Then accept connections from other peers and upload files to them!
 	while ((t = task_listen(listen_task))){
 		cpid = fork();
 		if(cpid == 0){
+			
 			task_upload(t);
-			exit(0);
+			_exit(0);
 		}else if(cpid > 0){
 			continue;		
 		}else{
