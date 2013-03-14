@@ -1,0 +1,237 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<title>Lecture 16</title>
+	<link rel="stylesheet" type="text/css" href="assets/css/general.css">
+</head>
+
+<body>
+	<div id="container">
+		<div id="header">
+			<h1 >Lecture 16: Robustness, parallelism, and NFS</h1>	
+			<h5 >Samping Chuang, Justin Wei</h5>
+		</div>
+		<div id="divider"></div>
+		<div id="content">
+			<h2>Table of Contents</h3>
+			<ul id="table_content">
+				<li><a href="#introduction">Introduction</a></li>
+				<li><a href="#rpc_possible_speedups">RPC Performance Issues</a></li>
+
+				<li><a href="#network_system">Network File Systems</a></li>
+				<li><a href="#process_structure">Process Structure in Linux</a></li>
+				<li><a href="#nfs_problems">NFS Synchronization</a></li>
+				<li><a href="#media_faults">Media Faults</a></li>
+				<li><a href="#disk_failure">Disk Drive Failure Rates</a></li>
+			</ul>
+			
+			<h2 id="introduction">Introduction</h2>
+			<p>In the last half of the last lecure we learned the basics about distributed systems and RPC and some common problems when using them.
+				RPC stands for remote procedure calls and in this lecture we cover details on the speedups of RPC, network file systems, and solutions to media faults.
+			</p>
+			
+			<h2 id="rpc_possible_speedups">RPC Performance Issues</h2>
+			
+			<h4>Possible Speedups</h4>
+			<ul>
+				<li>Having the client and server closer together.</li>
+				<li>Pipelining: where multiple requests are sent at the same time before client gets a response back from the server.</li>
+				<li>Caching so that retrieving data will be quicker.</li>
+				<li>Prefetching pages so that common pages that the users browses through are loaded quickly. This is sometimes combined with caching.</li>
+			</ul>
+			
+			<h4>Pipelining Problems</h4>
+			<ul>
+				<li>Server may overload from too many client requests.</li>
+				<li>Different client requests may have dependencies between each other.</li>
+				<li>Requests should all be itempotent or should not change anything on the page.</li>
+			</ul>
+			
+			<h4>Client Caching Problems</h4>
+			<ul>
+				<li>Stale Cache
+					<ul>
+						<li>Solutions: Expiration date on answers, quick ways of verifying that you're up to date.</li>
+					</ul>
+				</li>
+				<li>Push Protocal
+					<ul>
+						<li>Server notifies all clients that are interested.</li>
+						<li>Client must be always be on and working to see the notification.</li>
+						<li>Clients will have to do more work.</li>
+					</ul>
+				</ul>
+
+			</ul>
+			
+			<h2 id="network_system">Network File Systems</h2>
+			<div class="codebox">
+				<code>
+					$cd /net/foo/bar/biz<br>
+					$cat file		
+				</code>
+			</div>
+			
+			<p>
+				Network file systems determine the way that files are stored across a network and how different clients can access certain files.
+				The two commands above change the directory into a file on the machine foo and then grab a copy of the file /bar/biz/file with cat.
+			</p>
+			
+			<h4>From OS point of view</h4>
+			<ul>
+				<li>Mount table <br>
+					For Example: <br>
+					<img src="assets/image/mount1.jpg"> 
+					<img src="assets/image/mount2.jpg">
+					<p>
+						In this 5 file system mount table and diagram, each (dev, ino) pair uniquely identifies each file. Each file can be mounted on another file
+						system and all file systems are mounted onto root. 
+					</p>
+				</li>
+				
+				<li>LOFS(loop back file system)
+					<ul>
+						<li>Do not use loopback file systems as they generally come with an abundance of errors.</li>
+						<li>There may be many loop problems that you have to take care of.</li>
+						<li>One security addition is to only allow root to be able to mount and not clients.</li>
+					</ul>
+				</li>
+			</ul>
+			
+			<h2 id="process_structure">Process Structure in Linux</h3>
+			<img src="assets/image/process1.jpg">
+			<p>
+				This is a diagram of the NFS client code inside the kernel as a file system implementation.<br>
+			</p>
+			
+			<!--this should be a label -->
+			<p>NFS Protocol</p>
+			<div class="codebox">
+				<code>
+					MKDIR(dirfh, name, attr) //Parameters: parent,name of dir, permissions/ownership<br>
+					REMOVE(dirfh, name) -> status<br>
+					LOOKUP(dirfh, name) -> fh + attrs<br>
+					READ(fh, offset, size) -> data<br>
+				</code>
+			</div>
+			
+			<p>These are some functions of the RPC protocol of the NFS, which is very similar to unix syscalls. Unlike system calls which use file descriptors,
+				NFS does not. NFS uses file handles to uniquely identify different files. Close is a system call that is not included in the NFS protocol. We don't
+				need to include it because NFS doesn't use file descriptors and only needs file handlers. There is a change that close(fd) can return -1 with 
+				errno = EIO. It is impossible to tell which write or read call failed from the multiple requests sent, but it is good to check this return value
+				just to make sure the program works correctly. 
+			</p>
+			
+			<h4>Traditional Unix</h4>
+				<ul>
+					<li>Have files with link counts of 0.</li>
+					<li>Files are retained by kernel until they're closed.</li>
+					<li>Uses file descriptors which the kernel stores and the applications use</li>
+				</ul>
+			
+		
+			<h4>Network File System</h4>
+			<ul>
+				<li>We want NFS to survive file server crashes. We also want clients to operate without noticing server crashes.</li>
+				<li>File handle: inode numbers and the device number on a server. Client doesn't know the details and only server sees the dev and inode and knows the file.</li>
+				<li>NFS servers are always stateless.</li>
+				<li>NFS can't use Unix feature of seeing which particular file is open and when it is open.</li>
+				<li>They substitute for this by: 
+					<ul>
+						<li>If the link count would drop to zero on client, but files are open rename the file to NFSQFILES2. Unlink the file later on.</li>
+						<li>If the client crashes during this process the link will stay there.</li>
+						<li>If you use the command ls -al the file will still be shown, which is a worthwhile tradeoff to have.</li>
+					</ul>
+				</li>
+			</ul>
+			
+			<h2 id="nfs_problems">NFS Synchronization</h3>
+			
+			<div class="codebox">
+				<code>
+					//First two lines run in parallel with last two<br>
+					c1: t = get tod(); //Get today's date<br>
+					write(fd, t, size of (t);<br>
+					//These lines run in parallel with first two<br>
+					c2: t = get tod();<br>
+					read(fd, t1, sizeof(t));
+				</code>
+			</div>
+			
+			<p>
+				Will the second client see the first file or the new one? We need to address synchronization issues when using the NFS.
+			</p>
+			
+			<h4>Problem</h4>
+			
+			<p>
+				Synchronization in NFS is even more prevalent due to the number of clients that my be sending out requests to the server. In many cases the client may 
+				not see a consistent state even from a single chart. Writes executed on the server may also be in a different order than the client specified. NFS 
+				does not have read to write and write to read consistency, so these functions can be reordered by the server in any order.
+			</p>
+			
+			<!--emphasize this note -->
+			<note>	
+				*For performance, however, it does gaurantee close to open consistency. The client will check if a file is closed before it executes anything. 
+			</note>
+			
+			<h2 id="media_faults">Media Faults</h2>
+			<h4>Definition</h4>
+			<p>
+				Disk blocks can go bad when read or write reports an error. Need some type of tool to fix this.
+			</p>
+			
+			<h4>Solutions</h4>
+			<p>
+				Can use write-ahead logging and write-behind logging to solve this problem. Keep logs of the reads and writes so that if a media fault exists
+				there is a way to recover the lost data. The key point is using two logs not just logging itself. Always have a copy of the data. 
+			</p>
+			
+			<h4>Mirroring</h4>
+			<p>
+				Make multiple copies of each block when mirroring the data. When writing write 2 different copies and when reading read 1 copy. If the write
+				fails replace the bad disk copy data from the good replacement disk. 
+			</p>
+			
+			<h4>RAID</h4>
+			<p>
+				RAID stands for redundant arrays of independent disks. It is a type of storage technology that combines multiple disk drive components into one unit.
+				Using specific RAID levels may prevent certain disk errors from occuring such as media faults. 
+			</p>
+			
+			<h5>Raid 0:</h5>
+			<img src="assets/image/raid1.jpg">
+			<img src="assets/image/raid2.jpg">
+			<p>
+				Raid 0 eliminates redundancy for any of the files, so files are only stored once on all of the disks. This is bad in some cases as if a disk fault 
+				occurs there is no way to recover, but overall the performance is a lot better. There are two different ways the data is stored concatenation or
+				striping. Striping is faster than concatenation as multiple drives can be run concurrently. 
+			</p>
+			<h5>Raid 4:</h5>
+			<img src="assets/image/raid3.jpg">
+			
+			<p>
+				RAID 4 implements a file system that includes a parity drive to restore disks when a disk fails. Whenever there is a read error it uses XOR 
+				operations to get the file that had a fault. Always write to parity disk when any disk is updated. 
+			</p>
+			
+			<p>
+				Write: write to B and read from parity disk. Then write new parity disk.<br>
+				Read: read from parity disk. If there is a read error then use XOR. A^B^D^(A^B^C^D) gets the file C.		
+			</p>
+			
+			<ul>
+				<li>This assumes at most 1 disk failure at a time.</li>
+				<li>Performance will suffer after each failure because of having to retrieve files from parity disk.</li>
+				<li>Parity disk can also be a bottleneck of the entire program.</li>
+			</ul>
+			
+			<h2 id="#disk_failure">Disk Drive Failure Rates</h2>
+			<!-- Add in graphs here -->
+			
+		</div>
+			
+	</div>
+</body>
+</html>
