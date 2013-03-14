@@ -1,4 +1,6 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+
+
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
@@ -14,7 +16,7 @@
 		</div>
 		<div id="divider"></div>
 		<div id="content">
-			<h2>Table of Contents</h3>
+			<h2>Table of Contents</h2>
 			<ul id="table_content">
 				<li><a href="#introduction">Introduction</a></li>
 				<li><a href="#rpc_possible_speedups">RPC Performance Issues</a></li>
@@ -61,7 +63,7 @@
 						<li>Client must be always be on and working to see the notification.</li>
 						<li>Clients will have to do more work.</li>
 					</ul>
-				</ul>
+				</li>
 
 			</ul>
 			
@@ -82,8 +84,8 @@
 			<ul>
 				<li>Mount table <br>
 					For Example: <br>
-					<img src="assets/image/mount1.jpg"> 
-					<img src="assets/image/mount2.jpg">
+					<img alt="mount1" src="assets/image/mount1.jpg"> 
+					<img alt="mount2" src="assets/image/mount2.jpg">
 					<p>
 						In this 5 file system mount table and diagram, each (dev, ino) pair uniquely identifies each file. Each file can be mounted on another file
 						system and all file systems are mounted onto root. 
@@ -99,8 +101,8 @@
 				</li>
 			</ul>
 			
-			<h2 id="process_structure">Process Structure in Linux</h3>
-			<img src="assets/image/process1.jpg">
+			<h2 id="process_structure">Process Structure in Linux</h2>
+			<img alt="process" src="assets/image/process1.jpg">
 			<p>
 				This is a diagram of the NFS client code inside the kernel as a file system implementation.<br>
 			</p>
@@ -146,7 +148,7 @@
 				</li>
 			</ul>
 			
-			<h2 id="nfs_problems">NFS Synchronization</h3>
+			<h2 id="nfs_problems">NFS Synchronization</h2>
 			
 			<div class="codebox">
 				<code>
@@ -172,9 +174,8 @@
 			</p>
 			
 			<!--emphasize this note -->
-			<note>	
-				*For performance, however, it does gaurantee close to open consistency. The client will check if a file is closed before it executes anything. 
-			</note>
+			<p>*For performance, however, it does guarantee close to open consistency. The client will check if a file is closed before it executes anything. 
+			</p>
 			
 			<h2 id="media_faults">Media Faults</h2>
 			<h4>Definition</h4>
@@ -201,15 +202,15 @@
 			</p>
 			
 			<h5>Raid 0:</h5>
-			<img src="assets/image/raid1.jpg">
-			<img src="assets/image/raid2.jpg">
+			<img alt="raid1" src="assets/image/raid1.jpg">
+			<img alt="raid2" src="assets/image/raid2.jpg">
 			<p>
 				Raid 0 eliminates redundancy for any of the files, so files are only stored once on all of the disks. This is bad in some cases as if a disk fault 
 				occurs there is no way to recover, but overall the performance is a lot better. There are two different ways the data is stored concatenation or
 				striping. Striping is faster than concatenation as multiple drives can be run concurrently. 
 			</p>
 			<h5>Raid 4:</h5>
-			<img src="assets/image/raid3.jpg">
+			<img alt="raid3" src="assets/image/raid3.jpg">
 			
 			<p>
 				RAID 4 implements a file system that includes a parity drive to restore disks when a disk fails. Whenever there is a read error it uses XOR 
@@ -227,11 +228,20 @@
 				<li>Parity disk can also be a bottleneck of the entire program.</li>
 			</ul>
 			
-			<h2 id="#disk_failure">Disk Drive Failure Rates</h2>
-			<!-- Add in graphs here -->
-			
+			<h2 id="disk_failure">Disk Drive Failure Rates</h2>
+			<h4>Bathtub curve</h4>
+			<img alt="failure1" src="assets/image/failure.gif">
+			<h4>Cumulative version (in 5 years)</h4>
+			<img alt="failures" style="width:450px" src="assets/image/failure2.png">
+
+
 		</div>
 			
 	</div>
+	  <p>
+    <a href="http://validator.w3.org/check?uri=referer"><img
+      src="http://www.w3.org/Icons/valid-html401" alt="Valid HTML 4.01 Transitional" height="31" width="88"></a>
+  </p>
+
 </body>
 </html>
