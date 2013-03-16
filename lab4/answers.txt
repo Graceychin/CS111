@@ -38,7 +38,14 @@ a few task->filename copies. Also for strncpy, I also added a terminator in the 
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
 
+evilmode = 1:
+In this exploit we implement it in task_download. We choose to attack the peer when they are trying to upload a file we request. We target all the peers that are included in the peerlist that "HAVE" the file that we request. When the request is made task_download runs normally up until the point where the file is going to be downloaded. Instead of downloading the file we write to the peer's file instead of reading from it. We also choose to continue to write in a while loop until write returns a negative number or there is no more space left on the peer's disk. When a peer's disk is full we simply go on to the next peer on the list. Of course we could also instead write anything we want to the peer's file not just the character 'a'. 
+
+evilmode = 2:
+In this exploit we implement it in task_upload. We choose to attack the peer by trying to give it a file that is not currently located in the current directory. This file can actually be located anywhere in the hosts computer and any type of file can be uploaded. In the code we name the file ../virus to indicate it is a malicious file that can do harm to the peer's system. The best part about it is the peer can not see that we are giving them that file, it still shows that they are getting their originally requested file. There are limitations on how malicious the file you upload can be to them depending on the file extension of the file that the user requests for. 
+
 # Extra credit problems
-#Extra credit problem: none
+#Extra credit problem: 
+Finished implementation of the md5. Added in functionality so every time a user register's a file they will automatically also register it with the md5 checksum. I add in an extra function called mdt_convert, which converts a file to md5. I have to somehow traverse through the file and copy all the bytes to a char array and find out the file size as well before I use the given md5 functions. I check for the correct md5 checksum of the file after the file is actually downloaded. If the file downloaded does not match up with the checksum I try to download the file again from the next user. 
 
 # Add any other information you'd like us to know below this line.

